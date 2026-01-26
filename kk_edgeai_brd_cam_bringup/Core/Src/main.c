@@ -53,6 +53,7 @@ typedef struct __attribute__((packed)) {
 /* USER CODE BEGIN PD */
 #define ON  1
 #define OFF 0
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -67,8 +68,12 @@ volatile uint32_t g_sysTicks;
 
 extern DMA_QListTypeDef DCMIQueue;
 
-//uint32_t CameraBuf[480*272*3/4];
-__ALIGNED(32) uint8_t CameraBuf[320*240*2+4];  // *3 = RGB888  *2 = RGB565
+#ifdef USE_RGB565
+  __ALIGNED(32) uint8_t CameraBuf[4 + 320*240*2];  // *2 = RGB565
+#endif
+#ifdef USE_RGB888
+  __ALIGNED(32) uint8_t CameraBuf[4 + 320*240*3];  // *3 = RGB888
+#endif
 //volatile uint8_t frameFlag;
 uint8_t led_ready = 0;
 uint32_t cam_tick = 0;
@@ -182,45 +187,45 @@ int main(void)
   // Print
 //  HAL_UART_Transmit(&huart1, (uint8_t *)"\r\nKenneth's Edge AI Board Bring-up Test\r\n", strlen("\r\nKenneth's Edge AI Board Bring-up Test\r\n"), 1000);
 
-  // Light show
-  set_green_led_state(ON);
-  for (int i=0; i<10; i++) {
-	  HAL_Delay(250);
-	  HAL_GPIO_TogglePin(GRN_LED1_GPIO_Port, GRN_LED1_Pin);
-	  HAL_GPIO_TogglePin(RED_LED2_GPIO_Port, RED_LED2_Pin);
-  }
+  // Set all LEDs <off>
   set_green_led_state(OFF);
   set_red_led_state(OFF);
 
-  // Fill Disp + Text
+  // Initialize Display
   ST7789_Init();
   ST7789_Fill_Color(BLUE);
   uint16_t x, y;
   y = x = 8;
   ST7789_WriteString(x, y, "HELLO!", Font_16x26, YELLOW, BLUE);
   ST7789_WriteString(x, y+32, "Welcome to KK's Edge AI Board", Font_7x10, WHITE, BLUE);
-  ST7789_WriteString(x, y+64, "Press Button 2", Font_11x18, MAGENTA, BLUE);
+  ST7789_WriteString(x, y+50, "Camera Init...", Font_11x18, RED, BLACK);
 
   // Initialize camera
+#ifdef USE_RGB565
   if (BSP_CAMERA_Init(0, CAMERA_R320x240, CAMERA_PF_RGB565) != BSP_ERROR_NONE)
+#endif
+#ifdef USE_RGB888
+  if (BSP_CAMERA_Init(0, CAMERA_R320x240, CAMERA_PF_RGB888) != BSP_ERROR_NONE)
+#endif
   {
     set_red_led_state(ON);
   }
   else
   {
-//    HAL_Delay(1000); // give the camera time to return good images
-	uint32_t lightMode, colorEffect, mirrorFlip;
-	int32_t brightness, sat, contr, hue;
-	BSP_CAMERA_GetLightMode(0, &lightMode);
-	BSP_CAMERA_GetColorEffect(0, &colorEffect);
-	BSP_CAMERA_GetBrightness(0, &brightness);
-	BSP_CAMERA_GetSaturation(0, &sat);
-	BSP_CAMERA_GetContrast(0, &contr);
-	BSP_CAMERA_GetHueDegree(0, &hue);
-	BSP_CAMERA_GetMirrorFlip(0, &mirrorFlip);
-	char strBuf[150] = {0};
-	sprintf(strBuf, "\r\nLight Mode: %lu\r\nColor Effect: %lu\r\nBrightness: %ld\r\nSaturation: %ld\r\nContrast: %ld\r\nHueDeg: %ld\r\nMirror Flip: %lu\r\n", lightMode, colorEffect, brightness, sat, contr, hue, mirrorFlip);
-	HAL_UART_Transmit(&huart1, (uint8_t *)strBuf, strlen(strBuf), 1000);
+
+    HAL_Delay(1000); // give the camera time to return good images
+//	uint32_t lightMode, colorEffect, mirrorFlip;
+//	int32_t brightness, sat, contr, hue;
+//	BSP_CAMERA_GetLightMode(0, &lightMode);
+//	BSP_CAMERA_GetColorEffect(0, &colorEffect);
+//	BSP_CAMERA_GetBrightness(0, &brightness);
+//	BSP_CAMERA_GetSaturation(0, &sat);
+//	BSP_CAMERA_GetContrast(0, &contr);
+//	BSP_CAMERA_GetHueDegree(0, &hue);
+//	BSP_CAMERA_GetMirrorFlip(0, &mirrorFlip);
+//	char strBuf[150] = {0};
+//	sprintf(strBuf, "\r\nLight Mode: %lu\r\nColor Effect: %lu\r\nBrightness: %ld\r\nSaturation: %ld\r\nContrast: %ld\r\nHueDeg: %ld\r\nMirror Flip: %lu\r\n", lightMode, colorEffect, brightness, sat, contr, hue, mirrorFlip);
+//	HAL_UART_Transmit(&huart1, (uint8_t *)strBuf, strlen(strBuf), 1000);
 
 	// Set Camera params
 //	BSP_CAMERA_EnableNightMode(0);
@@ -229,17 +234,21 @@ int main(void)
 //	BSP_CAMERA_GetBrightness(0, &brightness);
 //	sprintf(strBuf, "\r\nBrightness set %ld\r\n", brightness);
 //	HAL_UART_Transmit(&huart1, (uint8_t *)strBuf, strlen(strBuf), 1000);
-	BSP_CAMERA_SetLightMode(0, CAMERA_LIGHT_CLOUDY);
-	HAL_Delay(20);
+	BSP_CAMERA_SetLightMode(0, CAMERA_LIGHT_OFFICE);
+	HAL_Delay(50);
 	BSP_CAMERA_SetMirrorFlip(0, CAMERA_MIRRORFLIP_MIRROR);
-	HAL_Delay(20);
+	HAL_Delay(50);
 
     // Take snapshot
 //    frameFlag = 0;
+	ST7789_WriteString(x, y+50, "< Press Button 2", Font_11x18, GREEN, BLACK);
     while (GPIO_PIN_RESET == HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON2_Pin));
+
     // fill in SYNC WORD
     *((uint32_t *)CameraBuf) = 0xDEADBEEF;
+    // Start Camera
     BSP_CAMERA_Start(0, get_camera_buf(), CAMERA_MODE_CONTINUOUS);
+
     cam_tick = get_ticks();
 //    led_ready = 1;
     set_green_led_state(ON);
@@ -428,6 +437,12 @@ static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint
     static char osd_buf[16];
     sprintf(osd_buf, "FRAME #%lu", ++frameNum);
     ST7789_WriteString(4, 4, osd_buf, Font_11x18, WHITE, BLACK);
+#ifdef USE_RGB565
+    ST7789_WriteString(170, 113, "RGB565", Font_11x18, BLACK, YELLOW);
+#endif
+#ifdef USE_RGB888
+    ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
+#endif
 }
 /* USER CODE END 4 */
 

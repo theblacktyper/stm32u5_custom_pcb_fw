@@ -77,7 +77,8 @@ void Error_Handler(void);
 #define RED_LED2_GPIO_Port GPIOC
 
 /* USER CODE BEGIN Private defines */
-
+//#define USE_RGB888
+#define USE_RGB565
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
