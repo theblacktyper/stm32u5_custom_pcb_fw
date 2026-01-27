@@ -28,6 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "linked_list.h"
@@ -72,7 +73,7 @@ extern DMA_QListTypeDef DCMIQueue;
   __ALIGNED(32) uint8_t CameraBuf[4 + 320*240*2];  // *2 = RGB565
 #endif
 #ifdef USE_RGB888
-  __ALIGNED(32) uint8_t CameraBuf[4 + 320*240*3];  // *3 = RGB888
+  __ALIGNED(32) uint8_t CameraBuf[4U + 320U * 240U * 3U];  // *3 = RGB888
 #endif
 //volatile uint8_t frameFlag;
 uint8_t led_ready = 0;
@@ -93,6 +94,10 @@ void SystemClock_Config(void);
 //static int32_t send_frame_uart(UART_HandleTypeDef *huart, uint8_t *frame_data, uint16_t width, uint16_t height);
 static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint16_t src_height, 
                                      uint16_t *dst_buffer, uint16_t dst_width, uint16_t dst_height);
+static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
+                                                        uint16_t src_width, uint16_t src_height,
+                                                        uint16_t *dst_buffer,
+                                                        uint16_t screen_w, uint16_t screen_h);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -234,8 +239,8 @@ int main(void)
 //	BSP_CAMERA_GetBrightness(0, &brightness);
 //	sprintf(strBuf, "\r\nBrightness set %ld\r\n", brightness);
 //	HAL_UART_Transmit(&huart1, (uint8_t *)strBuf, strlen(strBuf), 1000);
-	BSP_CAMERA_SetLightMode(0, CAMERA_LIGHT_OFFICE);
-	HAL_Delay(50);
+//	BSP_CAMERA_SetLightMode(0, CAMERA_LIGHT_OFFICE);
+//	HAL_Delay(50);
 	BSP_CAMERA_SetMirrorFlip(0, CAMERA_MIRRORFLIP_MIRROR);
 	HAL_Delay(50);
 
@@ -260,18 +265,21 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    if (msec_since(cam_tick) > 1000) {
-      BSP_CAMERA_Resume(0);
-      cam_tick = get_ticks();
-      set_green_led_state(ON);
-    }
-    else if (proc_frame) {
+	if (proc_frame) {
+	  uint16_t *dstBuf = (uint16_t *)malloc(240 * 135 * sizeof(uint16_t));
 	  // Scale and display frame on ST7789 display
-	  scale_and_display_frame(get_camera_buf(), 320, 240, DisplayBuf, 240, 135);
+	  crop_center_scale_and_display_square_rgb888(get_camera_buf(), 320, 240,
+			                                       dstBuf, 240, 135);
+	  free(dstBuf);
 	  // Also send frame to UART
 //	  send_frame_uart(&huart1, get_camera_buf(), 320, 240);
 	  set_green_led_state(OFF);
       proc_frame = 0;
+    }
+	else if (msec_since(cam_tick) > 1000) {
+      BSP_CAMERA_Resume(0);
+      cam_tick = get_ticks();
+      set_green_led_state(ON);
     }
     /* USER CODE END WHILE */
 
@@ -400,38 +408,40 @@ void SystemClock_Config(void)
  * @param dst_height Destination height
  * @return None
  */
-static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint16_t src_height, 
-                                     uint16_t *dst_buffer, uint16_t dst_width, uint16_t dst_height)
+static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint16_t src_height,
+                                    uint16_t *dst_buffer, uint16_t dst_width, uint16_t dst_height)
 {
     uint16_t x, y;
     uint16_t src_x, src_y;
-    uint16_t pixel;
-    uint16_t *src_pixel_ptr;
-    
-    // Scale using nearest neighbor interpolation
+
     for (y = 0; y < dst_height; y++) {
-        // Calculate source Y position with scaling
-        src_y = (y * src_height) / dst_height;
-        
+        src_y = (uint32_t)y * src_height / dst_height;
+
         for (x = 0; x < dst_width; x++) {
-            // Calculate source X position with scaling
-            src_x = (x * src_width) / dst_width;
-            
-            // Get source pixel (RGB565 is 2 bytes per pixel)
-            // Source frame is stored as uint8_t array, so we need to read 2 bytes
-            src_pixel_ptr = (uint16_t *)(src_frame + (src_y * src_width + src_x) * 2);
-            pixel = *src_pixel_ptr;
-            
-            // Swap bytes - DCMI stores RGB565 in big-endian format, but we need little-endian
-            // This fixes color issues (red/blue swapped, etc.)
-            pixel = __REV16(pixel);
-            
-            // Store in destination buffer
-            dst_buffer[y * dst_width + x] = pixel;
+            src_x = (uint32_t)x * src_width / dst_width;
+
+            // RGB888: R,G,B (3 bytes per pixel)
+            uint32_t src_idx = ((uint32_t)src_y * src_width + src_x) * 3;
+
+//            uint8_t r = src_frame[src_idx + 0];
+//            uint8_t g = src_frame[src_idx + 1];
+//            uint8_t b = src_frame[src_idx + 2];
+
+            uint8_t b = src_frame[src_idx + 0];
+            uint8_t g = src_frame[src_idx + 1];
+            uint8_t r = src_frame[src_idx + 2];
+
+            // Convert RGB888 -> RGB565 (in CPU-native endian)
+            uint16_t pixel565 =
+                (uint16_t)(((r & 0xF8) << 8) |
+                           ((g & 0xFC) << 3) |
+                           ((b & 0xF8) >> 3));
+
+            // ST7789 expects MSB first on the wire; HAL_SPI_Transmit sends bytes in memory order
+            dst_buffer[y * dst_width + x] = __REV16(pixel565);
         }
     }
-    
-    // Display the scaled frame on ST7789 (full screen)
+
     ST7789_DrawImage(0, 0, dst_width, dst_height, dst_buffer);
 
     static char osd_buf[16];
@@ -444,6 +454,74 @@ static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint
     ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
 #endif
 }
+
+// enhanced ver (with SW cropping)
+static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
+                                                        uint16_t src_width, uint16_t src_height,
+                                                        uint16_t *dst_buffer,
+                                                        uint16_t screen_w, uint16_t screen_h)
+{
+    // 1) Center crop parameters: 320x240 -> 192x192
+    const uint16_t crop_w = 192;
+    const uint16_t crop_h = 192;
+
+    uint16_t x_off = (src_width  - crop_w) / 2;  // 64 for 320->192
+    uint16_t y_off = (src_height - crop_h) / 2;  // 24 for 240->192
+
+    // 2) Fit square into screen: use min(screen_w, screen_h)
+    uint16_t sq = (screen_w < screen_h) ? screen_w : screen_h; // for 240x135 -> 135
+
+    // Center the square on screen
+    uint16_t dst_x0 = (screen_w - sq) / 2; // (240-135)/2 = 52
+    uint16_t dst_y0 = (screen_h - sq) / 2; // (135-135)/2 = 0
+
+    // 3) Clear background to black (RGB565 black = 0x0000; swapped still 0x0000)
+    for (uint32_t i = 0; i < (uint32_t)screen_w * screen_h; i++) {
+        dst_buffer[i] = 0x0000;
+    }
+
+    // 4) Nearest-neighbor scale from cropped 192x192 -> sq x sq and place into dst_buffer
+    for (uint16_t y = 0; y < sq; y++) {
+        uint16_t cy = (uint32_t)y * crop_h / sq;  // 0..191
+        uint16_t sy = y_off + cy;
+
+        uint32_t dst_row = (uint32_t)(dst_y0 + y) * screen_w;
+
+        for (uint16_t x = 0; x < sq; x++) {
+            uint16_t cx = (uint32_t)x * crop_w / sq; // 0..191
+            uint16_t sx = x_off + cx;
+
+            uint32_t src_idx = ((uint32_t)sy * src_width + sx) * 3;
+
+            uint8_t r = src_frame[src_idx + 0];
+            uint8_t g = src_frame[src_idx + 1];
+            uint8_t b = src_frame[src_idx + 2];
+
+            // RGB888 -> RGB565
+            uint16_t pixel565 =
+                (uint16_t)(((r & 0xF8) << 8) |
+                           ((g & 0xFC) << 3) |
+                           ((b & 0xF8) >> 3));
+
+            // Swap bytes for ST7789 SPI byte-stream
+            dst_buffer[dst_row + (dst_x0 + x)] = __REV16(pixel565);
+        }
+    }
+
+    // 5) Push full screen
+    ST7789_DrawImage(0, 0, screen_w, screen_h, dst_buffer);
+
+    static char osd_buf[16];
+    sprintf(osd_buf, "FRAME #%lu", ++frameNum);
+    ST7789_WriteString(4, 4, osd_buf, Font_11x18, WHITE, BLACK);
+#ifdef USE_RGB565
+    ST7789_WriteString(170, 113, "RGB565", Font_11x18, BLACK, YELLOW);
+#endif
+#ifdef USE_RGB888
+    ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
+#endif
+}
+
 /* USER CODE END 4 */
 
 /**
