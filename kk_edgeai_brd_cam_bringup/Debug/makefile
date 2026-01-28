@@ -9,6 +9,7 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
+-include X-CUBE-AI/App/subdir.mk
 -include Drivers/STM32U5xx_HAL_Driver/Src/subdir.mk
 -include Drivers/BSP/Components/ov5640/subdir.mk
 -include Drivers/BSP/B-U585I-IOT02A/subdir.mk
@@ -62,8 +63,8 @@ all: main-build
 main-build: kk_edgeai_brd_cam_bringup.elf secondary-outputs
 
 # Tool invocations
-kk_edgeai_brd_cam_bringup.elf kk_edgeai_brd_cam_bringup.map: $(OBJS) $(USER_OBJS) C:\Users\ka-gu\STM32CubeIDE\workspace_2.0.0\stm32u5_custom_pcb_fw\kk_edgeai_brd_cam_bringup\STM32U585RITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "kk_edgeai_brd_cam_bringup.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m33 -T"C:\Users\ka-gu\STM32CubeIDE\workspace_2.0.0\stm32u5_custom_pcb_fw\kk_edgeai_brd_cam_bringup\STM32U585RITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="kk_edgeai_brd_cam_bringup.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+kk_edgeai_brd_cam_bringup.elf kk_edgeai_brd_cam_bringup.map: $(OBJS) $(USER_OBJS) C:\Users\kenneth.kong\STM32CubeIDE\workspace_2.0.0\stm32u5_custom_pcb_fw\kk_edgeai_brd_cam_bringup\STM32U585RITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "kk_edgeai_brd_cam_bringup.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m33 -T"C:\Users\kenneth.kong\STM32CubeIDE\workspace_2.0.0\stm32u5_custom_pcb_fw\kk_edgeai_brd_cam_bringup\STM32U585RITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="kk_edgeai_brd_cam_bringup.map" -Wl,--gc-sections -static -L../Middlewares/ST/AI/Lib --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

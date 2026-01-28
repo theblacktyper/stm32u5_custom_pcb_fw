@@ -1,5 +1,7 @@
 #include "st7789.h"
 
+//#define USE_DMA
+
 #ifdef USE_DMA
 #include <string.h>
 uint16_t DMA_MIN_SIZE = 16;
@@ -8,7 +10,8 @@ uint16_t DMA_MIN_SIZE = 16;
  * And if your MCU have enough RAM(even larger than full-frame size),
  * Then you can specify the framebuffer size to the full resolution below.
  */
- #define HOR_LEN 	5	//	Also mind the resolution of your screen!
+// #define HOR_LEN 	5	//	Also mind the resolution of your screen!
+  #define HOR_LEN  1	//	To preserve RAM space
 uint16_t disp_buf[ST7789_WIDTH * HOR_LEN];
 #endif
 
@@ -40,7 +43,7 @@ static void ST7789_WriteData(uint8_t *buff, size_t buff_size)
 
 	while (buff_size > 0) {
 		uint16_t chunk_size = buff_size > 65535 ? 65535 : buff_size;
-		#ifdef USE_DMA
+#ifdef USE_DMA
 			if (DMA_MIN_SIZE <= buff_size)
 			{
 				HAL_SPI_Transmit_DMA(&ST7789_SPI_PORT, buff, chunk_size);
@@ -49,9 +52,9 @@ static void ST7789_WriteData(uint8_t *buff, size_t buff_size)
 			}
 			else
 				HAL_SPI_Transmit(&ST7789_SPI_PORT, buff, chunk_size, HAL_MAX_DELAY);
-		#else
+#else
 			HAL_SPI_Transmit(&ST7789_SPI_PORT, buff, chunk_size, HAL_MAX_DELAY);
-		#endif
+#endif
 		buff += chunk_size;
 		buff_size -= chunk_size;
 	}
@@ -133,9 +136,9 @@ static void ST7789_SetAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint1
  */
 void ST7789_Init(void)
 {
-	#ifdef USE_DMA
+#ifdef USE_DMA
 		memset(disp_buf, 0, sizeof(disp_buf));
-	#endif
+#endif
 	HAL_Delay(10);
     ST7789_RST_Clr();
     HAL_Delay(10);
@@ -202,20 +205,20 @@ void ST7789_Fill_Color(uint16_t color)
 	ST7789_SetAddressWindow(0, 0, ST7789_WIDTH - 1, ST7789_HEIGHT - 1);
 	ST7789_Select();
 
-	#ifdef USE_DMA
+#ifdef USE_DMA
 		for (i = 0; i < ST7789_HEIGHT / HOR_LEN; i++)
 		{
 			memset(disp_buf, color, sizeof(disp_buf));
 			ST7789_WriteData(disp_buf, sizeof(disp_buf));
 		}
-	#else
+#else
 		uint16_t j;
 		for (i = 0; i < ST7789_WIDTH; i++)
 				for (j = 0; j < ST7789_HEIGHT; j++) {
 					uint8_t data[] = {color >> 8, color & 0xFF};
 					ST7789_WriteData(data, sizeof(data));
 				}
-	#endif
+#endif
 	ST7789_UnSelect();
 }
 

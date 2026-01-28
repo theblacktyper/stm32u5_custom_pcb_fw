@@ -25,6 +25,7 @@
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
+#include "app_x-cube-ai.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -70,10 +71,10 @@ volatile uint32_t g_sysTicks;
 extern DMA_QListTypeDef DCMIQueue;
 
 #ifdef USE_RGB565
-  __ALIGNED(32) uint8_t CameraBuf[4 + 320*240*2];  // *2 = RGB565
+  __ALIGNED(32) uint8_t CameraBuf[320*240*2];  // *2 = RGB565
 #endif
 #ifdef USE_RGB888
-  __ALIGNED(32) uint8_t CameraBuf[4U + 320U * 240U * 3U];  // *3 = RGB888
+  __ALIGNED(32) uint8_t CameraBuf[320U * 240U * 3U];  // *3 = RGB888
 #endif
 //volatile uint8_t frameFlag;
 uint8_t led_ready = 0;
@@ -85,6 +86,8 @@ volatile uint8_t proc_frame = 0;
 __ALIGNED(32) uint16_t DisplayBuf[240*135];
 
 uint32_t frameNum = 0;
+
+float inference_res = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -96,15 +99,22 @@ static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint
                                      uint16_t *dst_buffer, uint16_t dst_width, uint16_t dst_height);
 static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
                                                         uint16_t src_width, uint16_t src_height,
-                                                        uint16_t *dst_buffer,
                                                         uint16_t screen_w, uint16_t screen_h);
+void crop_center_128x128_rgb888(uint8_t *src_frame, uint16_t src_width, uint16_t src_height,
+                                uint8_t *dst_buffer);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 uint8_t *get_camera_buf(void)
 {
-	return &CameraBuf[4];
+	return &CameraBuf[0];
+}
+
+// Function to get camera buffer for AI processing (extern declaration in app_x-cube-ai.c)
+uint8_t *get_camera_frame_for_ai(void)
+{
+	return &CameraBuf[0];
 }
 
 void BSP_CAMERA_FrameEventCallback(uint32_t Instance)
@@ -184,6 +194,7 @@ int main(void)
   MX_ICACHE_Init();
   MX_USART1_UART_Init();
   MX_SPI1_Init();
+  MX_X_CUBE_AI_Init();
   /* USER CODE BEGIN 2 */
   MX_DCMIQueue_Config();
   HAL_DMAEx_List_LinkQ(&handle_GPDMA1_Channel12, &DCMIQueue);
@@ -201,9 +212,9 @@ int main(void)
   ST7789_Fill_Color(BLUE);
   uint16_t x, y;
   y = x = 8;
-  ST7789_WriteString(x, y, "HELLO!", Font_16x26, YELLOW, BLUE);
-  ST7789_WriteString(x, y+32, "Welcome to KK's Edge AI Board", Font_7x10, WHITE, BLUE);
-  ST7789_WriteString(x, y+50, "Camera Init...", Font_11x18, RED, BLACK);
+  ST7789_WriteString(x, y, "EDGE AI BOARD", Font_16x26, YELLOW, BLUE);
+  ST7789_WriteString(x, y+32, "Starting Person Detection DEMO", Font_7x10, WHITE, BLUE);
+  ST7789_WriteString(x, y+52, "Camera Initializing", Font_11x18, RED, BLACK);
 
   // Initialize camera
 #ifdef USE_RGB565
@@ -246,17 +257,17 @@ int main(void)
 
     // Take snapshot
 //    frameFlag = 0;
-	ST7789_WriteString(x, y+50, "< Press Button 2", Font_11x18, GREEN, BLACK);
+	ST7789_Fill_Color(BLUE);
+	ST7789_WriteString(x, y,    "Press Button 2", Font_11x18, BLACK, YELLOW);
+	ST7789_WriteString(x, y+18, "To Begin DEMO!", Font_11x18, BLACK, YELLOW);
     while (GPIO_PIN_RESET == HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON2_Pin));
 
-    // fill in SYNC WORD
-    *((uint32_t *)CameraBuf) = 0xDEADBEEF;
     // Start Camera
     BSP_CAMERA_Start(0, get_camera_buf(), CAMERA_MODE_CONTINUOUS);
 
     cam_tick = get_ticks();
 //    led_ready = 1;
-    set_green_led_state(ON);
+//    set_green_led_state(ON);
   }
 
   /* USER CODE END 2 */
@@ -266,23 +277,26 @@ int main(void)
   while (1)
   {
 	if (proc_frame) {
-	  uint16_t *dstBuf = (uint16_t *)malloc(240 * 135 * sizeof(uint16_t));
-	  // Scale and display frame on ST7789 display
-	  crop_center_scale_and_display_square_rgb888(get_camera_buf(), 320, 240,
-			                                       dstBuf, 240, 135);
-	  free(dstBuf);
-	  // Also send frame to UART
+	  // Run AI inference on the new frame (crops center 128x128 internally)
+	  MX_X_CUBE_AI_Process();
+
+	  // Scale and display frame on ST7789 display (uses row-by-row DMA, no full buffer needed)
+	  crop_center_scale_and_display_square_rgb888(get_camera_buf(), 320, 240, 240, 135);
+	  // (Opt.) Also send frame to UART mainly for debug purpose
 //	  send_frame_uart(&huart1, get_camera_buf(), 320, 240);
-	  set_green_led_state(OFF);
+//	  set_green_led_state(OFF);
       proc_frame = 0;
     }
 	else if (msec_since(cam_tick) > 1000) {
+	  set_green_led_state(OFF);
+	  set_red_led_state(OFF);
       BSP_CAMERA_Resume(0);
       cam_tick = get_ticks();
-      set_green_led_state(ON);
+//      set_green_led_state(ON);
     }
     /* USER CODE END WHILE */
 
+//  MX_X_CUBE_AI_Process();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -376,7 +390,10 @@ void SystemClock_Config(void)
 //    uint32_t chunk_size = 4096;  // Adjust based on your UART buffer
 //
 //    // Send Sync Word
-//    HAL_UART_Transmit(huart, CameraBuf, 4, 1000);
+//    // fill in SYNC WORD
+//    uint8_t syncBuf[4];
+//    *((uint32_t *)syncBuf) = 0xDEADBEEF;
+//    HAL_UART_Transmit(huart, syncBuf, sizeof(syncBuf), 1000);
 //
 //    while(bytes_sent < data_len) {
 //        uint32_t remaining = data_len - bytes_sent;
@@ -447,79 +464,195 @@ static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint
     static char osd_buf[16];
     sprintf(osd_buf, "FRAME #%lu", ++frameNum);
     ST7789_WriteString(4, 4, osd_buf, Font_11x18, WHITE, BLACK);
-#ifdef USE_RGB565
-    ST7789_WriteString(170, 113, "RGB565", Font_11x18, BLACK, YELLOW);
-#endif
-#ifdef USE_RGB888
-    ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
-#endif
+//#ifdef USE_RGB565
+//    ST7789_WriteString(170, 113, "RGB565", Font_11x18, BLACK, YELLOW);
+//#endif
+//#ifdef USE_RGB888
+//    ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
+//#endif
 }
 
-// enhanced ver (with SW cropping)
+/**
+ * @brief Crop center square region, scale, and display using row-by-row DMA
+ * @param src_frame Pointer to source frame data (RGB888, 3 bytes per pixel, BGR888 format from DCMI)
+ * @param src_width Source frame width (320)
+ * @param src_height Source frame height (240)
+ * @param screen_w Screen width (240)
+ * @param screen_h Screen height (135)
+ * @return None
+ * 
+ * This function uses row-by-row processing to minimize RAM usage.
+ * It processes one row at a time and sends it via SPI DMA.
+ */
 static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
                                                         uint16_t src_width, uint16_t src_height,
-                                                        uint16_t *dst_buffer,
                                                         uint16_t screen_w, uint16_t screen_h)
 {
-    // 1) Center crop parameters: 320x240 -> 192x192
-    const uint16_t crop_w = 192;
-    const uint16_t crop_h = 192;
+    // 1) Center crop parameters: 320x240 -> 128x128 (matches AI model input exactly)
+    const uint16_t crop_w = 128;
+    const uint16_t crop_h = 128;
 
-    uint16_t x_off = (src_width  - crop_w) / 2;  // 64 for 320->192
-    uint16_t y_off = (src_height - crop_h) / 2;  // 24 for 240->192
+    uint16_t x_off = (src_width  - crop_w) / 2;  // 96 for 320->128
+    uint16_t y_off = (src_height - crop_h) / 2;  // 56 for 240->128
 
-    // 2) Fit square into screen: use min(screen_w, screen_h)
-    uint16_t sq = (screen_w < screen_h) ? screen_w : screen_h; // for 240x135 -> 135
+    // 2) Display size: scale 128x128 to 135x135 (to fit on screen)
+    const uint16_t display_size = 135;  // Display as 135x135 square
 
     // Center the square on screen
-    uint16_t dst_x0 = (screen_w - sq) / 2; // (240-135)/2 = 52
-    uint16_t dst_y0 = (screen_h - sq) / 2; // (135-135)/2 = 0
+    uint16_t dst_x0 = (screen_w - display_size) / 2; // (240-135)/2 = 52
+    uint16_t dst_y0 = (screen_h - display_size) / 2; // (135-135)/2 = 0
 
-    // 3) Clear background to black (RGB565 black = 0x0000; swapped still 0x0000)
-    for (uint32_t i = 0; i < (uint32_t)screen_w * screen_h; i++) {
-        dst_buffer[i] = 0x0000;
+    // 3) Row buffer for DMA (one row = screen width)
+    static uint16_t row_buf[ST7789_WIDTH];  // 240 pixels = 480 bytes
+    
+    // 4) Set address window for full screen (replicate logic from ST7789_SetAddressWindow)
+    ST7789_Select();
+    {
+        uint16_t x_start = 0 + 40, x_end = (screen_w - 1) + 40;  // X_SHIFT = 40 for rotation 1
+        uint16_t y_start = 0 + 52, y_end = (screen_h - 1) + 52;  // Y_SHIFT = 52 for rotation 1
+        
+        /* Column Address set */
+        ST7789_DC_Clr();
+        uint8_t cmd = 0x2A;  // ST7789_CASET
+        HAL_SPI_Transmit(&ST7789_SPI_PORT, &cmd, 1, HAL_MAX_DELAY);
+        ST7789_DC_Set();
+        {
+            uint8_t data[] = {x_start >> 8, x_start & 0xFF, x_end >> 8, x_end & 0xFF};
+            HAL_SPI_Transmit(&ST7789_SPI_PORT, data, sizeof(data), HAL_MAX_DELAY);
+        }
+        
+        /* Row Address set */
+        ST7789_DC_Clr();
+        cmd = 0x2B;  // ST7789_RASET
+        HAL_SPI_Transmit(&ST7789_SPI_PORT, &cmd, 1, HAL_MAX_DELAY);
+        ST7789_DC_Set();
+        {
+            uint8_t data[] = {y_start >> 8, y_start & 0xFF, y_end >> 8, y_end & 0xFF};
+            HAL_SPI_Transmit(&ST7789_SPI_PORT, data, sizeof(data), HAL_MAX_DELAY);
+        }
+        
+        /* Write to RAM */
+        ST7789_DC_Clr();
+        cmd = 0x2C;  // ST7789_RAMWR
+        HAL_SPI_Transmit(&ST7789_SPI_PORT, &cmd, 1, HAL_MAX_DELAY);
+        ST7789_DC_Set();
     }
 
-    // 4) Nearest-neighbor scale from cropped 192x192 -> sq x sq and place into dst_buffer
-    for (uint16_t y = 0; y < sq; y++) {
-        uint16_t cy = (uint32_t)y * crop_h / sq;  // 0..191
-        uint16_t sy = y_off + cy;
+    // 5) Process and send row by row
+    const uint16_t DMA_MIN_SIZE = 16;  // Minimum size for DMA transfer
+    for (uint16_t screen_y = 0; screen_y < screen_h; screen_y++) {
+        // Clear row buffer to black (for areas outside the square)
+        for (uint16_t x = 0; x < screen_w; x++) {
+            row_buf[x] = 0x0000;  // Black (RGB565, byte-swapped)
+        }
 
-        uint32_t dst_row = (uint32_t)(dst_y0 + y) * screen_w;
+        // If this row is within the square region, process it
+        if (screen_y >= dst_y0 && screen_y < (dst_y0 + display_size)) {
+            uint16_t display_y = screen_y - dst_y0;  // Position within display square (0..134)
+            uint16_t cy = (uint32_t)display_y * crop_h / display_size;  // Source crop Y (0..127)
+            uint16_t sy = y_off + cy;  // Source frame Y
 
-        for (uint16_t x = 0; x < sq; x++) {
-            uint16_t cx = (uint32_t)x * crop_w / sq; // 0..191
-            uint16_t sx = x_off + cx;
+            // Process pixels in this row
+            for (uint16_t screen_x = 0; screen_x < display_size; screen_x++) {
+                uint16_t cx = (uint32_t)screen_x * crop_w / display_size; // Source crop X (0..127)
+                uint16_t sx = x_off + cx;  // Source frame X
 
-            uint32_t src_idx = ((uint32_t)sy * src_width + sx) * 3;
+                // Get source pixel (BGR888 format from DCMI)
+                uint32_t src_idx = ((uint32_t)sy * src_width + sx) * 3;
+                uint8_t b = src_frame[src_idx + 0];  // Blue from DCMI
+                uint8_t g = src_frame[src_idx + 1];  // Green from DCMI
+                uint8_t r = src_frame[src_idx + 2];  // Red from DCMI
 
-            uint8_t r = src_frame[src_idx + 0];
-            uint8_t g = src_frame[src_idx + 1];
-            uint8_t b = src_frame[src_idx + 2];
+                // Convert RGB888 -> RGB565
+                uint16_t pixel565 = (uint16_t)(((r & 0xF8) << 8) |
+                                               ((g & 0xFC) << 3) |
+                                               ((b & 0xF8) >> 3));
 
-            // RGB888 -> RGB565
-            uint16_t pixel565 =
-                (uint16_t)(((r & 0xF8) << 8) |
-                           ((g & 0xFC) << 3) |
-                           ((b & 0xF8) >> 3));
+                // Swap bytes for ST7789 SPI byte-stream and place in row buffer
+                row_buf[dst_x0 + screen_x] = __REV16(pixel565);
+            }
+        }
 
-            // Swap bytes for ST7789 SPI byte-stream
-            dst_buffer[dst_row + (dst_x0 + x)] = __REV16(pixel565);
+        // Send row via DMA (replicate ST7789_WriteData logic)
+        size_t buff_size = sizeof(uint16_t) * screen_w;
+        uint8_t *buff = (uint8_t *)row_buf;
+        
+        while (buff_size > 0) {
+            uint16_t chunk_size = buff_size > 65535 ? 65535 : buff_size;
+            if (DMA_MIN_SIZE <= buff_size) {
+                HAL_SPI_Transmit_DMA(&ST7789_SPI_PORT, buff, chunk_size);
+                while (ST7789_SPI_PORT.hdmatx->State != HAL_DMA_STATE_READY) {}
+            } else {
+                HAL_SPI_Transmit(&ST7789_SPI_PORT, buff, chunk_size, HAL_MAX_DELAY);
+            }
+            buff += chunk_size;
+            buff_size -= chunk_size;
         }
     }
 
-    // 5) Push full screen
-    ST7789_DrawImage(0, 0, screen_w, screen_h, dst_buffer);
+    ST7789_UnSelect();
 
+    // 6) Draw OSD text
     static char osd_buf[16];
-    sprintf(osd_buf, "FRAME #%lu", ++frameNum);
-    ST7789_WriteString(4, 4, osd_buf, Font_11x18, WHITE, BLACK);
-#ifdef USE_RGB565
-    ST7789_WriteString(170, 113, "RGB565", Font_11x18, BLACK, YELLOW);
-#endif
-#ifdef USE_RGB888
-    ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
-#endif
+    sprintf(osd_buf, "FRAME");
+    ST7789_WriteString(4, 4, osd_buf, Font_7x10, WHITE, BLACK);
+    sprintf(osd_buf, "#%lu", ++frameNum);
+    ST7789_WriteString(4, 16, osd_buf, Font_7x10, WHITE, BLACK);
+//#ifdef USE_RGB565
+//    ST7789_WriteString(170, 113, "RGB565", Font_11x18, BLACK, YELLOW);
+//#endif
+//#ifdef USE_RGB888
+//    ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
+//#endif
+    sprintf(osd_buf, "Person: %u%%", (unsigned int)(inference_res*100.f));
+    ST7789_WriteString((240 - (16*11 + 4)), 113, osd_buf, Font_11x18, BLACK, YELLOW);
+}
+
+/**
+ * @brief Crop center 128x128 region from RGB888 source frame for AI model input
+ * @param src_frame Pointer to source frame data (RGB888, 3 bytes per pixel)
+ *                  Note: DCMI stores as BGR888 (B, G, R), but we convert to RGB888 for model
+ * @param src_width Source frame width (320)
+ * @param src_height Source frame height (240)
+ * @param dst_buffer Pointer to destination buffer (128x128x3 = 49152 bytes, RGB888 format)
+ * @return None
+ */
+void crop_center_128x128_rgb888(uint8_t *src_frame, uint16_t src_width, uint16_t src_height,
+                                uint8_t *dst_buffer)
+{
+    const uint16_t crop_size = 128;
+    
+    // Calculate center crop offsets
+    // For 320x240: crop 128x128 centered
+    // X offset: (320 - 128) / 2 = 96
+    // Y offset: (240 - 128) / 2 = 56
+    uint16_t x_offset = (src_width - crop_size) / 2;
+    uint16_t y_offset = (src_height - crop_size) / 2;
+    
+    // Copy cropped region pixel by pixel
+    for (uint16_t y = 0; y < crop_size; y++) {
+        uint16_t src_y = y_offset + y;
+        
+        for (uint16_t x = 0; x < crop_size; x++) {
+            uint16_t src_x = x_offset + x;
+            
+            // Source pixel index (BGR888 format from DCMI)
+            uint32_t src_idx = ((uint32_t)src_y * src_width + src_x) * 3;
+            
+            // Destination pixel index (RGB888 format for model)
+            uint32_t dst_idx = ((uint32_t)y * crop_size + x) * 3;
+            
+            // DCMI stores as BGR888, convert to RGB888 for TensorFlow model
+            uint8_t b = src_frame[src_idx + 0];  // Blue from DCMI
+            uint8_t g = src_frame[src_idx + 1];  // Green from DCMI
+            uint8_t r = src_frame[src_idx + 2];  // Red from DCMI
+            
+            // Store as RGB888 for model input
+            dst_buffer[dst_idx + 0] = r;  // Red
+            dst_buffer[dst_idx + 1] = g;  // Green
+            dst_buffer[dst_idx + 2] = b;  // Blue
+        }
+    }
 }
 
 /* USER CODE END 4 */

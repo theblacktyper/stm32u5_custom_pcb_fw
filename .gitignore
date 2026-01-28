@@ -1,0 +1,7 @@
+kk_edgeai_brd_cam_bringup/Debug/Core/Src/subdir.mk
+kk_edgeai_brd_cam_bringup/Debug/Core/Startup/subdir.mk
+kk_edgeai_brd_cam_bringup/Debug/Drivers/BSP/B-U585I-IOT02A/subdir.mk
+kk_edgeai_brd_cam_bringup/Debug/Drivers/BSP/Components/ov5640/subdir.mk
+kk_edgeai_brd_cam_bringup/Debug/Drivers/STM32U5xx_HAL_Driver/Src/subdir.mk
+kk_edgeai_brd_cam_bringup/Debug/makefile
+kk_edgeai_brd_cam_bringup/Debug/sources.mk

@@ -27,4 +27,5 @@ Core/Startup \
 Drivers/BSP/B-U585I-IOT02A \
 Drivers/BSP/Components/ov5640 \
 Drivers/STM32U5xx_HAL_Driver/Src \
+X-CUBE-AI/App \
 
