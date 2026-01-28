@@ -79,6 +79,9 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 #define USE_RGB888
 //#define USE_RGB565
+
+// time between each capture
+#define MSEC_BTWN_IMG_CAPTURES (600U)
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

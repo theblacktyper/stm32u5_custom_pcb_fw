@@ -244,9 +244,9 @@ int main(void)
 //	HAL_UART_Transmit(&huart1, (uint8_t *)strBuf, strlen(strBuf), 1000);
 
 	// Set Camera params
-//	BSP_CAMERA_EnableNightMode(0);
-//	BSP_CAMERA_SetBrightness(0, 4);  // 2nd arg = brightness level [-4 , 4]
-//	HAL_Delay(20);
+	BSP_CAMERA_EnableNightMode(0);
+//	BSP_CAMERA_SetBrightness(0, -1);  // 2nd arg = brightness level [-4 , 4]
+	HAL_Delay(50);
 //	BSP_CAMERA_GetBrightness(0, &brightness);
 //	sprintf(strBuf, "\r\nBrightness set %ld\r\n", brightness);
 //	HAL_UART_Transmit(&huart1, (uint8_t *)strBuf, strlen(strBuf), 1000);
@@ -287,9 +287,10 @@ int main(void)
 //	  set_green_led_state(OFF);
       proc_frame = 0;
     }
-	else if (msec_since(cam_tick) > 1000) {
-	  set_green_led_state(OFF);
-	  set_red_led_state(OFF);
+	else if (msec_since(cam_tick) > MSEC_BTWN_IMG_CAPTURES) {
+	  // UNCOMMENT these two lines to debug camera FPS:
+//	  set_green_led_state(OFF);
+//	  set_red_led_state(OFF);
       BSP_CAMERA_Resume(0);
       cam_tick = get_ticks();
 //      set_green_led_state(ON);

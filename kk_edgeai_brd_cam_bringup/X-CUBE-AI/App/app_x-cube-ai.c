@@ -225,7 +225,7 @@ int post_process(ai_i8* data[])
   // However, if the model outputs logits, threshold would be 0.0
   // Based on the model report showing LOGISTIC activation, output should be 0-1 probability
   // Using 0.5 as threshold for person detection
-  const float PERSON_THRESHOLD = 0.5f;
+  const float PERSON_THRESHOLD = 0.66f;//0.5f;
   
   if (person_score > PERSON_THRESHOLD) {
     // Person detected - set GREEN LED on, RED LED off
