@@ -474,34 +474,39 @@ static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint
 }
 
 /**
- * @brief Crop center square region, scale, and display using row-by-row DMA
+ * @brief Scale full 320x240 RGB888 frame to fit 240x135 screen with aspect ratio preserved
+ *        and display using row-by-row DMA (letterboxed with black bars left/right).
+ *
  * @param src_frame Pointer to source frame data (RGB888, 3 bytes per pixel, BGR888 format from DCMI)
- * @param src_width Source frame width (320)
- * @param src_height Source frame height (240)
- * @param screen_w Screen width (240)
+ * @param src_width Source frame width  (expected 320)
+ * @param src_height Source frame height (expected 240)
+ * @param screen_w Screen width  (240)
  * @param screen_h Screen height (135)
  * @return None
- * 
- * This function uses row-by-row processing to minimize RAM usage.
- * It processes one row at a time and sends it via SPI DMA.
+ *
+ * This function:
+ *   - Computes a uniform scale so that the full 320x240 frame fits within 240x135
+ *   - Preserves the original 4:3 aspect ratio
+ *   - Fills unused columns on the left/right with black (letterboxing)
+ *   - Uses row-by-row processing and SPI DMA to minimize RAM usage
  */
 static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
                                                         uint16_t src_width, uint16_t src_height,
                                                         uint16_t screen_w, uint16_t screen_h)
 {
-    // 1) Center crop parameters: 320x240 -> 128x128 (matches AI model input exactly)
-    const uint16_t crop_w = 128;
-    const uint16_t crop_h = 128;
-
-    uint16_t x_off = (src_width  - crop_w) / 2;  // 96 for 320->128
-    uint16_t y_off = (src_height - crop_h) / 2;  // 56 for 240->128
-
-    // 2) Display size: scale 128x128 to 135x135 (to fit on screen)
-    const uint16_t display_size = 135;  // Display as 135x135 square
-
-    // Center the square on screen
-    uint16_t dst_x0 = (screen_w - display_size) / 2; // (240-135)/2 = 52
-    uint16_t dst_y0 = (screen_h - display_size) / 2; // (135-135)/2 = 0
+    // 1) Compute active display width that preserves aspect ratio
+    //
+    // We choose the scale so that the full height fits:
+    //   scale_h = screen_h / src_height  (135 / 240 = 0.5625)
+    //   active_w = src_width * screen_h / src_height  (=> 320 * 135 / 240 = 180)
+    //
+    // This preserves aspect ratio and leaves black bars left/right:
+    //   left_bar = (screen_w - active_w) / 2  (=> (240 - 180) / 2 = 30)
+    uint16_t active_w = (uint32_t)src_width * screen_h / src_height;  // 180 for 320x240 -> 240x135
+    if (active_w > screen_w) {
+        active_w = screen_w;  // Safety clamp
+    }
+    uint16_t x_pad = (screen_w - active_w) / 2;
 
     // 3) Row buffer for DMA (one row = screen width)
     static uint16_t row_buf[ST7789_WIDTH];  // 240 pixels = 480 bytes
@@ -547,31 +552,36 @@ static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
             row_buf[x] = 0x0000;  // Black (RGB565, byte-swapped)
         }
 
-        // If this row is within the square region, process it
-        if (screen_y >= dst_y0 && screen_y < (dst_y0 + display_size)) {
-            uint16_t display_y = screen_y - dst_y0;  // Position within display square (0..134)
-            uint16_t cy = (uint32_t)display_y * crop_h / display_size;  // Source crop Y (0..127)
-            uint16_t sy = y_off + cy;  // Source frame Y
+        // Map this screen row to a source row using uniform vertical scaling:
+        //   src_y = screen_y * src_height / screen_h
+        uint16_t sy = (uint32_t)screen_y * src_height / screen_h;
 
-            // Process pixels in this row
-            for (uint16_t screen_x = 0; screen_x < display_size; screen_x++) {
-                uint16_t cx = (uint32_t)screen_x * crop_w / display_size; // Source crop X (0..127)
-                uint16_t sx = x_off + cx;  // Source frame X
-
-                // Get source pixel (BGR888 format from DCMI)
-                uint32_t src_idx = ((uint32_t)sy * src_width + sx) * 3;
-                uint8_t b = src_frame[src_idx + 0];  // Blue from DCMI
-                uint8_t g = src_frame[src_idx + 1];  // Green from DCMI
-                uint8_t r = src_frame[src_idx + 2];  // Red from DCMI
-
-                // Convert RGB888 -> RGB565
-                uint16_t pixel565 = (uint16_t)(((r & 0xF8) << 8) |
-                                               ((g & 0xFC) << 3) |
-                                               ((b & 0xF8) >> 3));
-
-                // Swap bytes for ST7789 SPI byte-stream and place in row buffer
-                row_buf[dst_x0 + screen_x] = __REV16(pixel565);
+        // Process active display region: columns [x_pad, x_pad + active_w)
+        for (uint16_t screen_x = 0; screen_x < screen_w; screen_x++) {
+            if (screen_x < x_pad || screen_x >= (x_pad + active_w)) {
+                // Left/right black bars already set in row_buf
+                continue;
             }
+
+            // Position within active display region (0 .. active_w-1)
+            uint16_t active_x = screen_x - x_pad;
+            // Map to source X coordinate:
+            //   sx = active_x * src_width / active_w
+            uint16_t sx = (uint32_t)active_x * src_width / active_w;
+
+            // Get source pixel (BGR888 format from DCMI)
+            uint32_t src_idx = ((uint32_t)sy * src_width + sx) * 3;
+            uint8_t b = src_frame[src_idx + 0];  // Blue from DCMI
+            uint8_t g = src_frame[src_idx + 1];  // Green from DCMI
+            uint8_t r = src_frame[src_idx + 2];  // Red from DCMI
+
+            // Convert RGB888 -> RGB565
+            uint16_t pixel565 = (uint16_t)(((r & 0xF8) << 8) |
+                                           ((g & 0xFC) << 3) |
+                                           ((b & 0xF8) >> 3));
+
+            // Swap bytes for ST7789 SPI byte-stream and place in row buffer
+            row_buf[screen_x] = __REV16(pixel565);
         }
 
         // Send row via DMA (replicate ST7789_WriteData logic)
@@ -593,7 +603,18 @@ static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
 
     ST7789_UnSelect();
 
-    // 6) Draw OSD text
+    // 6) Draw AI crop indicator rectangle (72x72) at center of display
+    {
+        const uint16_t rect_w = 72;
+        const uint16_t rect_h = 72;
+        uint16_t rect_x1 = (screen_w - rect_w) / 2;        // (240 - 72) / 2 = 84
+        uint16_t rect_y1 = (screen_h - rect_h) / 2;        // (135 - 72) / 2 = 31
+        uint16_t rect_x2 = rect_x1 + rect_w - 1;           // 84 + 72 - 1 = 155
+        uint16_t rect_y2 = rect_y1 + rect_h - 1;           // 31 + 72 - 1 = 102
+        ST7789_DrawRectangle(rect_x1, rect_y1, rect_x2, rect_y2, YELLOW);
+    }
+
+    // 7) Draw OSD text
     static char osd_buf[16];
     sprintf(osd_buf, "FRAME");
     ST7789_WriteString(4, 4, osd_buf, Font_7x10, WHITE, BLACK);
@@ -606,7 +627,7 @@ static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
 //    ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
 //#endif
     sprintf(osd_buf, "Person: %u%%", (unsigned int)(inference_res*100.f));
-    ST7789_WriteString((240 - (16*11 + 4)), 113, osd_buf, Font_11x18, BLACK, YELLOW);
+    ST7789_WriteString((240 - (12*11 + 2)), 115, osd_buf, Font_11x18, BLACK, YELLOW);
 }
 
 /**
