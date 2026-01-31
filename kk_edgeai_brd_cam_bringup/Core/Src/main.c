@@ -40,15 +40,15 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-// Frame header structure for synchronization
-typedef struct __attribute__((packed)) {
-    uint32_t sync_word;      // 0xDEADBEEF for synchronization
-    uint16_t width;
-    uint16_t height;
-    uint16_t format;         // 0 = RGB565  1 = RGB888
-    uint32_t frame_size;     // Total bytes
-    uint32_t checksum;       // Simple checksum for validation
-} FrameHeader_t;
+//// Frame header structure for synchronization
+//typedef struct __attribute__((packed)) {
+//    uint32_t sync_word;      // 0xDEADBEEF for synchronization
+//    uint16_t width;
+//    uint16_t height;
+//    uint16_t format;         // 0 = RGB565  1 = RGB888
+//    uint32_t frame_size;     // Total bytes
+//    uint32_t checksum;       // Simple checksum for validation
+//} FrameHeader_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -66,40 +66,43 @@ typedef struct __attribute__((packed)) {
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-volatile uint32_t g_sysTicks;
-
 extern DMA_QListTypeDef DCMIQueue;
 
+// flags
+volatile uint8_t is_frame_ready = 0;
+uint8_t led_ready = 0;
+
+// timer (systick-based) related
+volatile uint32_t g_sysTicks;
+uint32_t cam_tick = 0;
+
+// Camera frame buffer
 #ifdef USE_RGB565
   __ALIGNED(32) uint8_t CameraBuf[320*240*2];  // *2 = RGB565
 #endif
 #ifdef USE_RGB888
-  __ALIGNED(32) uint8_t CameraBuf[320U * 240U * 3U];  // *3 = RGB888
+//  __ALIGNED(32) uint8_t CameraBuf[320U * 240U * 3U];  // *3 = RGB888
+  __ALIGNED(32) uint8_t CameraBuf[128*128*3];  // this matches to input tensor shape to the model deployed
 #endif
-//volatile uint8_t frameFlag;
-uint8_t led_ready = 0;
-uint32_t cam_tick = 0;
-
-volatile uint8_t proc_frame = 0;
 
 // Display buffer for scaled frame (240x135 RGB565)
 __ALIGNED(32) uint16_t DisplayBuf[240*135];
 
+// Frame counter
 uint32_t frameNum = 0;
 
+// global var for model output result
 float inference_res = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-//static uint32_t calculate_checksum(uint8_t *data, uint32_t len);
-//static int32_t send_frame_uart(UART_HandleTypeDef *huart, uint8_t *frame_data, uint16_t width, uint16_t height);
-static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint16_t src_height, 
-                                     uint16_t *dst_buffer, uint16_t dst_width, uint16_t dst_height);
-static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
-                                                        uint16_t src_width, uint16_t src_height,
-                                                        uint16_t screen_w, uint16_t screen_h);
+//static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint16_t src_height,
+//                                     uint16_t *dst_buffer, uint16_t dst_width, uint16_t dst_height);
+//static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
+//                                                        uint16_t src_width, uint16_t src_height,
+//                                                        uint16_t screen_w, uint16_t screen_h);
 void crop_center_128x128_rgb888(uint8_t *src_frame, uint16_t src_width, uint16_t src_height,
                                 uint8_t *dst_buffer);
 /* USER CODE END PFP */
@@ -119,18 +122,8 @@ uint8_t *get_camera_frame_for_ai(void)
 
 void BSP_CAMERA_FrameEventCallback(uint32_t Instance)
 {
-  BSP_CAMERA_Suspend(0);
-  //frameFlag = 1;
-  
-  proc_frame = 1;
-
-  // Scale and display frame on ST7789 display
-//  scale_and_display_frame(get_camera_buf(), 320, 240, DisplayBuf, 240, 135);
-  
-  // Also send frame to UART
-//  send_frame_uart(&huart1, get_camera_buf(), 320, 240);
-  //memset(CameraBuf, 0, sizeof(CameraBuf));
-//  BSP_CAMERA_Resume(0);
+//  BSP_CAMERA_Suspend(0);  // only if CONTINUOUS mode is in use
+  is_frame_ready = 1;
 }
 
 uint32_t get_ticks(void)
@@ -167,7 +160,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	uint32_t dcmi_dma_len = ((uint32_t)(128 * 128) * 3) / 4U;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -224,12 +217,15 @@ int main(void)
   if (BSP_CAMERA_Init(0, CAMERA_R320x240, CAMERA_PF_RGB888) != BSP_ERROR_NONE)
 #endif
   {
-    set_red_led_state(ON);
+    ST7789_Fill_Color(BLACK);
+    ST7789_WriteString(x, y, "CAMERA ERR!", Font_16x26, BLACK, RED);
+    while(1);
   }
   else
   {
+//    HAL_Delay(1000); // give the camera time to return good images
 
-    HAL_Delay(1000); // give the camera time to return good images
+    // Debug
 //	uint32_t lightMode, colorEffect, mirrorFlip;
 //	int32_t brightness, sat, contr, hue;
 //	BSP_CAMERA_GetLightMode(0, &lightMode);
@@ -243,31 +239,32 @@ int main(void)
 //	sprintf(strBuf, "\r\nLight Mode: %lu\r\nColor Effect: %lu\r\nBrightness: %ld\r\nSaturation: %ld\r\nContrast: %ld\r\nHueDeg: %ld\r\nMirror Flip: %lu\r\n", lightMode, colorEffect, brightness, sat, contr, hue, mirrorFlip);
 //	HAL_UART_Transmit(&huart1, (uint8_t *)strBuf, strlen(strBuf), 1000);
 
-	// Set Camera params
-	BSP_CAMERA_EnableNightMode(0);
-//	BSP_CAMERA_SetBrightness(0, -1);  // 2nd arg = brightness level [-4 , 4]
-	HAL_Delay(50);
-//	BSP_CAMERA_GetBrightness(0, &brightness);
-//	sprintf(strBuf, "\r\nBrightness set %ld\r\n", brightness);
-//	HAL_UART_Transmit(&huart1, (uint8_t *)strBuf, strlen(strBuf), 1000);
-//	BSP_CAMERA_SetLightMode(0, CAMERA_LIGHT_OFFICE);
-//	HAL_Delay(50);
+	// Configure camera options
 	BSP_CAMERA_SetMirrorFlip(0, CAMERA_MIRRORFLIP_MIRROR);
-	HAL_Delay(50);
+	HAL_Delay(100);
 
-    // Take snapshot
-//    frameFlag = 0;
-	ST7789_Fill_Color(BLUE);
-	ST7789_WriteString(x, y,    "Press Button 2", Font_11x18, BLACK, YELLOW);
-	ST7789_WriteString(x, y+18, "To Begin DEMO!", Font_11x18, BLACK, YELLOW);
+	// Enable DCMI crop
+	uint32_t X0 = (320 - 128) * 3 / 2;  // horizontal value is in pixel clocks count
+	uint32_t Y0 = (240 - 128) / 2;
+	uint32_t XSize = (128 * 3) - 1;     // horizontal value is in pixel clocks count [0 based]
+	uint32_t YSize = 128 - 1;           // 0 based
+	HAL_DCMI_ConfigCrop(&hdcmi, X0, Y0, XSize, YSize);
+	HAL_Delay(450);
+	HAL_DCMI_EnableCrop(&hdcmi);
+	HAL_Delay(450);
+
+	// Wait for user input
+	ST7789_Fill_Color(BLACK);
+	ST7789_WriteString(x, y,    "Press Button 2", Font_11x18, YELLOW, BLACK);
+	ST7789_WriteString(x, y+18, "To Begin DEMO!", Font_11x18, YELLOW, BLACK);
     while (GPIO_PIN_RESET == HAL_GPIO_ReadPin(BUTTON2_GPIO_Port, BUTTON2_Pin));
+    ST7789_Fill_Color(BLACK);
 
     // Start Camera
-    BSP_CAMERA_Start(0, get_camera_buf(), CAMERA_MODE_CONTINUOUS);
-
-    cam_tick = get_ticks();
-//    led_ready = 1;
-//    set_green_led_state(ON);
+    is_frame_ready = 0;
+//    BSP_CAMERA_Start(0, get_camera_buf(), CAMERA_MODE_CONTINUOUS);
+    // Note: BSP function uses full 320*240 for DCMI DMA transfer, so it can't be used for cropped frame setup
+    HAL_DCMI_Start_DMA(&hdcmi, CAMERA_MODE_SNAPSHOT, (uint32_t)CameraBuf, dcmi_dma_len);
   }
 
   /* USER CODE END 2 */
@@ -276,25 +273,73 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	if (proc_frame) {
-	  // Run AI inference on the new frame (crops center 128x128 internally)
+	if (is_frame_ready)
+	{
+//	// 0. black out screen
+//	  ST7789_Fill_Color(BLACK);
+
+	// 1. Run AI inference on the new frame (crops center 128x128 internally)
 	  MX_X_CUBE_AI_Process();
 
-	  // Scale and display frame on ST7789 display (uses row-by-row DMA, no full buffer needed)
-	  crop_center_scale_and_display_square_rgb888(get_camera_buf(), 320, 240, 240, 135);
-	  // (Opt.) Also send frame to UART mainly for debug purpose
-//	  send_frame_uart(&huart1, get_camera_buf(), 320, 240);
-//	  set_green_led_state(OFF);
-      proc_frame = 0;
+	// 2. Draw frame to display
+	  // Convert RGB888 (BGR) to RGB565 and scale 128x128 to 135x135 (maintaining square aspect ratio)
+	  // Display is 240x135, so we scale to 135x135 and center horizontally at x = (240-135)/2 = 52
+	  const uint16_t src_width = 128;
+	  const uint16_t src_height = 128;
+	  const uint16_t dst_width = 135;
+	  const uint16_t dst_height = 135;
+	  const uint16_t dst_x = (240 - dst_width) / 2;  // Center horizontally
+	  const uint16_t dst_y = 0;  // Top aligned
+
+	  // Scale and convert pixel by pixel
+	  for (uint16_t dy = 0; dy < dst_height; dy++)
+	  {
+		for (uint16_t dx = 0; dx < dst_width; dx++)
+		{
+		  // Calculate source pixel coordinates using nearest neighbor
+		  uint16_t sx = (dx * src_width) / dst_width;
+		  uint16_t sy = (dy * src_height) / dst_height;
+
+		  // Clamp to source bounds
+		  if (sx >= src_width) sx = src_width - 1;
+		  if (sy >= src_height) sy = src_height - 1;
+
+		  // Get source pixel (BGR format: B, G, R)
+		  uint32_t src_idx = (sy * src_width + sx) * 3;
+		  uint8_t b = CameraBuf[src_idx];
+		  uint8_t g = CameraBuf[src_idx + 1];
+		  uint8_t r = CameraBuf[src_idx + 2];
+
+		  // Convert to RGB565: RRRRR GGGGGG BBBBB
+		  uint16_t rgb565 = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+
+		  // Swap bytes for ST7789 SPI because of the difference between big-endian and little-endian
+		  rgb565 = (rgb565 >> 8) | (rgb565 << 8);
+
+		  // Store in display buffer
+		  DisplayBuf[dy * dst_width + dx] = rgb565;
+		}
+	  }
+	  // Display the scaled image
+	  ST7789_DrawImage(dst_x, dst_y, dst_width, dst_height, DisplayBuf);
+
+	// 3. Draw overlay
+	  char osd_buf[20] = {0};
+	  sprintf(osd_buf, "Person:%2u%%", (uint8_t)(inference_res*100.f));
+	  ST7789_WriteString((240 - (strlen(osd_buf)*11 + 4)), 115, osd_buf, Font_11x18, BLACK, YELLOW);
+
+    // 4. Restart camera if SNAPSHOT mode is in use
+      is_frame_ready = 0;
+      HAL_DCMI_Start_DMA(&hdcmi, CAMERA_MODE_SNAPSHOT, (uint32_t)CameraBuf, dcmi_dma_len);
     }
-	else if (msec_since(cam_tick) > MSEC_BTWN_IMG_CAPTURES) {
-	  // UNCOMMENT these two lines to debug camera FPS:
-//	  set_green_led_state(OFF);
-//	  set_red_led_state(OFF);
-      BSP_CAMERA_Resume(0);
-      cam_tick = get_ticks();
-//      set_green_led_state(ON);
-    }
+//	else if (msec_since(cam_tick) > MSEC_BTWN_IMG_CAPTURES) {
+//	  // UNCOMMENT these two lines to debug camera FPS:
+////	  set_green_led_state(OFF);
+////	  set_red_led_state(OFF);
+//      BSP_CAMERA_Resume(0);
+//      cam_tick = get_ticks();
+////      set_green_led_state(ON);
+//    }
     /* USER CODE END WHILE */
 
 //  MX_X_CUBE_AI_Process();
@@ -358,6 +403,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
 // Simple checksum calculation
 //static inline uint32_t calculate_checksum(uint8_t *data, uint32_t len)
 //{
@@ -416,219 +462,162 @@ void SystemClock_Config(void)
 //    return 0;
 //}
 
-/**
- * @brief Scale RGB565 frame from source resolution to destination resolution
- * @param src_frame Pointer to source frame data (RGB565, 2 bytes per pixel)
- * @param src_width Source frame width
- * @param src_height Source frame height
- * @param dst_buffer Pointer to destination buffer (RGB565, 2 bytes per pixel)
- * @param dst_width Destination width
- * @param dst_height Destination height
- * @return None
- */
-static void scale_and_display_frame(uint8_t *src_frame, uint16_t src_width, uint16_t src_height,
-                                    uint16_t *dst_buffer, uint16_t dst_width, uint16_t dst_height)
-{
-    uint16_t x, y;
-    uint16_t src_x, src_y;
-
-    for (y = 0; y < dst_height; y++) {
-        src_y = (uint32_t)y * src_height / dst_height;
-
-        for (x = 0; x < dst_width; x++) {
-            src_x = (uint32_t)x * src_width / dst_width;
-
-            // RGB888: R,G,B (3 bytes per pixel)
-            uint32_t src_idx = ((uint32_t)src_y * src_width + src_x) * 3;
-
-//            uint8_t r = src_frame[src_idx + 0];
-//            uint8_t g = src_frame[src_idx + 1];
-//            uint8_t b = src_frame[src_idx + 2];
-
-            uint8_t b = src_frame[src_idx + 0];
-            uint8_t g = src_frame[src_idx + 1];
-            uint8_t r = src_frame[src_idx + 2];
-
-            // Convert RGB888 -> RGB565 (in CPU-native endian)
-            uint16_t pixel565 =
-                (uint16_t)(((r & 0xF8) << 8) |
-                           ((g & 0xFC) << 3) |
-                           ((b & 0xF8) >> 3));
-
-            // ST7789 expects MSB first on the wire; HAL_SPI_Transmit sends bytes in memory order
-            dst_buffer[y * dst_width + x] = __REV16(pixel565);
-        }
-    }
-
-    ST7789_DrawImage(0, 0, dst_width, dst_height, dst_buffer);
-
-    static char osd_buf[16];
-    sprintf(osd_buf, "FRAME #%lu", ++frameNum);
-    ST7789_WriteString(4, 4, osd_buf, Font_11x18, WHITE, BLACK);
-//#ifdef USE_RGB565
-//    ST7789_WriteString(170, 113, "RGB565", Font_11x18, BLACK, YELLOW);
-//#endif
-//#ifdef USE_RGB888
-//    ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
-//#endif
-}
-
-/**
- * @brief Scale full 320x240 RGB888 frame to fit 240x135 screen with aspect ratio preserved
- *        and display using row-by-row DMA (letterboxed with black bars left/right).
- *
- * @param src_frame Pointer to source frame data (RGB888, 3 bytes per pixel, BGR888 format from DCMI)
- * @param src_width Source frame width  (expected 320)
- * @param src_height Source frame height (expected 240)
- * @param screen_w Screen width  (240)
- * @param screen_h Screen height (135)
- * @return None
- *
- * This function:
- *   - Computes a uniform scale so that the full 320x240 frame fits within 240x135
- *   - Preserves the original 4:3 aspect ratio
- *   - Fills unused columns on the left/right with black (letterboxing)
- *   - Uses row-by-row processing and SPI DMA to minimize RAM usage
- */
-static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
-                                                        uint16_t src_width, uint16_t src_height,
-                                                        uint16_t screen_w, uint16_t screen_h)
-{
-    // 1) Compute active display width that preserves aspect ratio
-    //
-    // We choose the scale so that the full height fits:
-    //   scale_h = screen_h / src_height  (135 / 240 = 0.5625)
-    //   active_w = src_width * screen_h / src_height  (=> 320 * 135 / 240 = 180)
-    //
-    // This preserves aspect ratio and leaves black bars left/right:
-    //   left_bar = (screen_w - active_w) / 2  (=> (240 - 180) / 2 = 30)
-    uint16_t active_w = (uint32_t)src_width * screen_h / src_height;  // 180 for 320x240 -> 240x135
-    if (active_w > screen_w) {
-        active_w = screen_w;  // Safety clamp
-    }
-    uint16_t x_pad = (screen_w - active_w) / 2;
-
-    // 3) Row buffer for DMA (one row = screen width)
-    static uint16_t row_buf[ST7789_WIDTH];  // 240 pixels = 480 bytes
-    
-    // 4) Set address window for full screen (replicate logic from ST7789_SetAddressWindow)
-    ST7789_Select();
-    {
-        uint16_t x_start = 0 + 40, x_end = (screen_w - 1) + 40;  // X_SHIFT = 40 for rotation 1
-        uint16_t y_start = 0 + 52, y_end = (screen_h - 1) + 52;  // Y_SHIFT = 52 for rotation 1
-        
-        /* Column Address set */
-        ST7789_DC_Clr();
-        uint8_t cmd = 0x2A;  // ST7789_CASET
-        HAL_SPI_Transmit(&ST7789_SPI_PORT, &cmd, 1, HAL_MAX_DELAY);
-        ST7789_DC_Set();
-        {
-            uint8_t data[] = {x_start >> 8, x_start & 0xFF, x_end >> 8, x_end & 0xFF};
-            HAL_SPI_Transmit(&ST7789_SPI_PORT, data, sizeof(data), HAL_MAX_DELAY);
-        }
-        
-        /* Row Address set */
-        ST7789_DC_Clr();
-        cmd = 0x2B;  // ST7789_RASET
-        HAL_SPI_Transmit(&ST7789_SPI_PORT, &cmd, 1, HAL_MAX_DELAY);
-        ST7789_DC_Set();
-        {
-            uint8_t data[] = {y_start >> 8, y_start & 0xFF, y_end >> 8, y_end & 0xFF};
-            HAL_SPI_Transmit(&ST7789_SPI_PORT, data, sizeof(data), HAL_MAX_DELAY);
-        }
-        
-        /* Write to RAM */
-        ST7789_DC_Clr();
-        cmd = 0x2C;  // ST7789_RAMWR
-        HAL_SPI_Transmit(&ST7789_SPI_PORT, &cmd, 1, HAL_MAX_DELAY);
-        ST7789_DC_Set();
-    }
-
-    // 5) Process and send row by row
-    const uint16_t DMA_MIN_SIZE = 16;  // Minimum size for DMA transfer
-    for (uint16_t screen_y = 0; screen_y < screen_h; screen_y++) {
-        // Clear row buffer to black (for areas outside the square)
-        for (uint16_t x = 0; x < screen_w; x++) {
-            row_buf[x] = 0x0000;  // Black (RGB565, byte-swapped)
-        }
-
-        // Map this screen row to a source row using uniform vertical scaling:
-        //   src_y = screen_y * src_height / screen_h
-        uint16_t sy = (uint32_t)screen_y * src_height / screen_h;
-
-        // Process active display region: columns [x_pad, x_pad + active_w)
-        for (uint16_t screen_x = 0; screen_x < screen_w; screen_x++) {
-            if (screen_x < x_pad || screen_x >= (x_pad + active_w)) {
-                // Left/right black bars already set in row_buf
-                continue;
-            }
-
-            // Position within active display region (0 .. active_w-1)
-            uint16_t active_x = screen_x - x_pad;
-            // Map to source X coordinate:
-            //   sx = active_x * src_width / active_w
-            uint16_t sx = (uint32_t)active_x * src_width / active_w;
-
-            // Get source pixel (BGR888 format from DCMI)
-            uint32_t src_idx = ((uint32_t)sy * src_width + sx) * 3;
-            uint8_t b = src_frame[src_idx + 0];  // Blue from DCMI
-            uint8_t g = src_frame[src_idx + 1];  // Green from DCMI
-            uint8_t r = src_frame[src_idx + 2];  // Red from DCMI
-
-            // Convert RGB888 -> RGB565
-            uint16_t pixel565 = (uint16_t)(((r & 0xF8) << 8) |
-                                           ((g & 0xFC) << 3) |
-                                           ((b & 0xF8) >> 3));
-
-            // Swap bytes for ST7789 SPI byte-stream and place in row buffer
-            row_buf[screen_x] = __REV16(pixel565);
-        }
-
-        // Send row via DMA (replicate ST7789_WriteData logic)
-        size_t buff_size = sizeof(uint16_t) * screen_w;
-        uint8_t *buff = (uint8_t *)row_buf;
-        
-        while (buff_size > 0) {
-            uint16_t chunk_size = buff_size > 65535 ? 65535 : buff_size;
-            if (DMA_MIN_SIZE <= buff_size) {
-                HAL_SPI_Transmit_DMA(&ST7789_SPI_PORT, buff, chunk_size);
-                while (ST7789_SPI_PORT.hdmatx->State != HAL_DMA_STATE_READY) {}
-            } else {
-                HAL_SPI_Transmit(&ST7789_SPI_PORT, buff, chunk_size, HAL_MAX_DELAY);
-            }
-            buff += chunk_size;
-            buff_size -= chunk_size;
-        }
-    }
-
-    ST7789_UnSelect();
-
-    // 6) Draw AI crop indicator rectangle (72x72) at center of display
-    {
-        const uint16_t rect_w = 72;
-        const uint16_t rect_h = 72;
-        uint16_t rect_x1 = (screen_w - rect_w) / 2;        // (240 - 72) / 2 = 84
-        uint16_t rect_y1 = (screen_h - rect_h) / 2;        // (135 - 72) / 2 = 31
-        uint16_t rect_x2 = rect_x1 + rect_w - 1;           // 84 + 72 - 1 = 155
-        uint16_t rect_y2 = rect_y1 + rect_h - 1;           // 31 + 72 - 1 = 102
-        ST7789_DrawRectangle(rect_x1, rect_y1, rect_x2, rect_y2, YELLOW);
-    }
-
-    // 7) Draw OSD text
-    static char osd_buf[16];
-    sprintf(osd_buf, "FRAME");
-    ST7789_WriteString(4, 4, osd_buf, Font_7x10, WHITE, BLACK);
-    sprintf(osd_buf, "#%lu", ++frameNum);
-    ST7789_WriteString(4, 16, osd_buf, Font_7x10, WHITE, BLACK);
-//#ifdef USE_RGB565
-//    ST7789_WriteString(170, 113, "RGB565", Font_11x18, BLACK, YELLOW);
-//#endif
-//#ifdef USE_RGB888
-//    ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
-//#endif
-    sprintf(osd_buf, "Person: %u%%", (unsigned int)(inference_res*100.f));
-    ST7789_WriteString((240 - (12*11 + 2)), 115, osd_buf, Font_11x18, BLACK, YELLOW);
-}
+///**
+// * @brief Scale full 320x240 RGB888 frame to fit 240x135 screen with aspect ratio preserved
+// *        and display using row-by-row DMA (letterboxed with black bars left/right).
+// *
+// * @param src_frame Pointer to source frame data (RGB888, 3 bytes per pixel, BGR888 format from DCMI)
+// * @param src_width Source frame width  (expected 320)
+// * @param src_height Source frame height (expected 240)
+// * @param screen_w Screen width  (240)
+// * @param screen_h Screen height (135)
+// * @return None
+// *
+// * This function:
+// *   - Computes a uniform scale so that the full 320x240 frame fits within 240x135
+// *   - Preserves the original 4:3 aspect ratio
+// *   - Fills unused columns on the left/right with black (letterboxing)
+// *   - Uses row-by-row processing and SPI DMA to minimize RAM usage
+// */
+//static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
+//                                                        uint16_t src_width, uint16_t src_height,
+//                                                        uint16_t screen_w, uint16_t screen_h)
+//{
+//    // 1) Compute active display width that preserves aspect ratio
+//    //
+//    // We choose the scale so that the full height fits:
+//    //   scale_h = screen_h / src_height  (135 / 240 = 0.5625)
+//    //   active_w = src_width * screen_h / src_height  (=> 320 * 135 / 240 = 180)
+//    //
+//    // This preserves aspect ratio and leaves black bars left/right:
+//    //   left_bar = (screen_w - active_w) / 2  (=> (240 - 180) / 2 = 30)
+//    uint16_t active_w = (uint32_t)src_width * screen_h / src_height;  // 180 for 320x240 -> 240x135
+//    if (active_w > screen_w) {
+//        active_w = screen_w;  // Safety clamp
+//    }
+//    uint16_t x_pad = (screen_w - active_w) / 2;
+//
+//    // 3) Row buffer for DMA (one row = screen width)
+//    static uint16_t row_buf[ST7789_WIDTH];  // 240 pixels = 480 bytes
+//
+//    // 4) Set address window for full screen (replicate logic from ST7789_SetAddressWindow)
+//    ST7789_Select();
+//    {
+//        uint16_t x_start = 0 + 40, x_end = (screen_w - 1) + 40;  // X_SHIFT = 40 for rotation 1
+//        uint16_t y_start = 0 + 52, y_end = (screen_h - 1) + 52;  // Y_SHIFT = 52 for rotation 1
+//
+//        /* Column Address set */
+//        ST7789_DC_Clr();
+//        uint8_t cmd = 0x2A;  // ST7789_CASET
+//        HAL_SPI_Transmit(&ST7789_SPI_PORT, &cmd, 1, HAL_MAX_DELAY);
+//        ST7789_DC_Set();
+//        {
+//            uint8_t data[] = {x_start >> 8, x_start & 0xFF, x_end >> 8, x_end & 0xFF};
+//            HAL_SPI_Transmit(&ST7789_SPI_PORT, data, sizeof(data), HAL_MAX_DELAY);
+//        }
+//
+//        /* Row Address set */
+//        ST7789_DC_Clr();
+//        cmd = 0x2B;  // ST7789_RASET
+//        HAL_SPI_Transmit(&ST7789_SPI_PORT, &cmd, 1, HAL_MAX_DELAY);
+//        ST7789_DC_Set();
+//        {
+//            uint8_t data[] = {y_start >> 8, y_start & 0xFF, y_end >> 8, y_end & 0xFF};
+//            HAL_SPI_Transmit(&ST7789_SPI_PORT, data, sizeof(data), HAL_MAX_DELAY);
+//        }
+//
+//        /* Write to RAM */
+//        ST7789_DC_Clr();
+//        cmd = 0x2C;  // ST7789_RAMWR
+//        HAL_SPI_Transmit(&ST7789_SPI_PORT, &cmd, 1, HAL_MAX_DELAY);
+//        ST7789_DC_Set();
+//    }
+//
+//    // 5) Process and send row by row
+//    const uint16_t DMA_MIN_SIZE = 16;  // Minimum size for DMA transfer
+//    for (uint16_t screen_y = 0; screen_y < screen_h; screen_y++) {
+//        // Clear row buffer to black (for areas outside the square)
+//        for (uint16_t x = 0; x < screen_w; x++) {
+//            row_buf[x] = 0x0000;  // Black (RGB565, byte-swapped)
+//        }
+//
+//        // Map this screen row to a source row using uniform vertical scaling:
+//        //   src_y = screen_y * src_height / screen_h
+//        uint16_t sy = (uint32_t)screen_y * src_height / screen_h;
+//
+//        // Process active display region: columns [x_pad, x_pad + active_w)
+//        for (uint16_t screen_x = 0; screen_x < screen_w; screen_x++) {
+//            if (screen_x < x_pad || screen_x >= (x_pad + active_w)) {
+//                // Left/right black bars already set in row_buf
+//                continue;
+//            }
+//
+//            // Position within active display region (0 .. active_w-1)
+//            uint16_t active_x = screen_x - x_pad;
+//            // Map to source X coordinate:
+//            //   sx = active_x * src_width / active_w
+//            uint16_t sx = (uint32_t)active_x * src_width / active_w;
+//
+//            // Get source pixel (BGR888 format from DCMI)
+//            uint32_t src_idx = ((uint32_t)sy * src_width + sx) * 3;
+//            uint8_t b = src_frame[src_idx + 0];  // Blue from DCMI
+//            uint8_t g = src_frame[src_idx + 1];  // Green from DCMI
+//            uint8_t r = src_frame[src_idx + 2];  // Red from DCMI
+//
+//            // Convert RGB888 -> RGB565
+//            uint16_t pixel565 = (uint16_t)(((r & 0xF8) << 8) |
+//                                           ((g & 0xFC) << 3) |
+//                                           ((b & 0xF8) >> 3));
+//
+//            // Swap bytes for ST7789 SPI byte-stream and place in row buffer
+//            row_buf[screen_x] = __REV16(pixel565);
+//        }
+//
+//        // Send row via DMA (replicate ST7789_WriteData logic)
+//        size_t buff_size = sizeof(uint16_t) * screen_w;
+//        uint8_t *buff = (uint8_t *)row_buf;
+//
+//        while (buff_size > 0) {
+//            uint16_t chunk_size = buff_size > 65535 ? 65535 : buff_size;
+//            if (DMA_MIN_SIZE <= buff_size) {
+//                HAL_SPI_Transmit_DMA(&ST7789_SPI_PORT, buff, chunk_size);
+//                while (ST7789_SPI_PORT.hdmatx->State != HAL_DMA_STATE_READY) {}
+//            } else {
+//                HAL_SPI_Transmit(&ST7789_SPI_PORT, buff, chunk_size, HAL_MAX_DELAY);
+//            }
+//            buff += chunk_size;
+//            buff_size -= chunk_size;
+//        }
+//    }
+//
+//    ST7789_UnSelect();
+//
+//    // 6) Draw AI crop indicator rectangle (72x72) at center of display
+//    {
+//        const uint16_t rect_w = 72;
+//        const uint16_t rect_h = 72;
+//        uint16_t rect_x1 = (screen_w - rect_w) / 2;        // (240 - 72) / 2 = 84
+//        uint16_t rect_y1 = (screen_h - rect_h) / 2;        // (135 - 72) / 2 = 31
+//        uint16_t rect_x2 = rect_x1 + rect_w - 1;           // 84 + 72 - 1 = 155
+//        uint16_t rect_y2 = rect_y1 + rect_h - 1;           // 31 + 72 - 1 = 102
+//        ST7789_DrawRectangle(rect_x1, rect_y1, rect_x2, rect_y2, YELLOW);
+//    }
+//
+//    // 7) Draw OSD text
+//    static char osd_buf[16];
+//    sprintf(osd_buf, "FRAME");
+//    ST7789_WriteString(4, 4, osd_buf, Font_7x10, WHITE, BLACK);
+//    sprintf(osd_buf, "#%lu", ++frameNum);
+//    ST7789_WriteString(4, 16, osd_buf, Font_7x10, WHITE, BLACK);
+////#ifdef USE_RGB565
+////    ST7789_WriteString(170, 113, "RGB565", Font_11x18, BLACK, YELLOW);
+////#endif
+////#ifdef USE_RGB888
+////    ST7789_WriteString(170, 113, "RGB888", Font_11x18, BLACK, YELLOW);
+////#endif
+//    sprintf(osd_buf, "Person: %u%%", (unsigned int)(inference_res*100.f));
+//    ST7789_WriteString((240 - (12*11 + 2)), 115, osd_buf, Font_11x18, BLACK, YELLOW);
+//}
 
 /**
  * @brief Crop center 128x128 region from RGB888 source frame for AI model input
@@ -642,33 +631,24 @@ static void crop_center_scale_and_display_square_rgb888(uint8_t *src_frame,
 void crop_center_128x128_rgb888(uint8_t *src_frame, uint16_t src_width, uint16_t src_height,
                                 uint8_t *dst_buffer)
 {
-    const uint16_t crop_size = 128;
-    
-    // Calculate center crop offsets
-    // For 320x240: crop 128x128 centered
-    // X offset: (320 - 128) / 2 = 96
-    // Y offset: (240 - 128) / 2 = 56
-    uint16_t x_offset = (src_width - crop_size) / 2;
-    uint16_t y_offset = (src_height - crop_size) / 2;
-    
     // Copy cropped region pixel by pixel
-    for (uint16_t y = 0; y < crop_size; y++) {
-        uint16_t src_y = y_offset + y;
-        
-        for (uint16_t x = 0; x < crop_size; x++) {
-            uint16_t src_x = x_offset + x;
-            
+    for (uint16_t y = 0; y < 128; y++) {
+        uint16_t src_y = y;
+
+        for (uint16_t x = 0; x < 128; x++) {
+            uint16_t src_x = x;
+
             // Source pixel index (BGR888 format from DCMI)
             uint32_t src_idx = ((uint32_t)src_y * src_width + src_x) * 3;
-            
+
             // Destination pixel index (RGB888 format for model)
-            uint32_t dst_idx = ((uint32_t)y * crop_size + x) * 3;
-            
+            uint32_t dst_idx = ((uint32_t)y * 128 + x) * 3;
+
             // DCMI stores as BGR888, convert to RGB888 for TensorFlow model
             uint8_t b = src_frame[src_idx + 0];  // Blue from DCMI
             uint8_t g = src_frame[src_idx + 1];  // Green from DCMI
             uint8_t r = src_frame[src_idx + 2];  // Red from DCMI
-            
+
             // Store as RGB888 for model input
             dst_buffer[dst_idx + 0] = r;  // Red
             dst_buffer[dst_idx + 1] = g;  // Green

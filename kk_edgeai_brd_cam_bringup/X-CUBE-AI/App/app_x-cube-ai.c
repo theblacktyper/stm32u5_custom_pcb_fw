@@ -195,7 +195,8 @@ int acquire_and_process_data(ai_i8* data[])
   // Crop center 128x128 from 320x240 frame and convert BGR888 to RGB888
   // data[0] points to data_in_1 buffer which is AI_P_DET_MODEL_IN_1_SIZE_BYTES (49152 bytes)
   // This crops the center region: X offset = (320-128)/2 = 96, Y offset = (240-128)/2 = 56
-  crop_center_128x128_rgb888(camera_frame, 320, 240, (uint8_t*)data[0]);
+  // NOTE: this function is now repurposed to just feed camera buf as-is to model since we are using HW cropping.
+  crop_center_128x128_rgb888(camera_frame, 128, 128, (uint8_t*)data[0]);
   
   return 0;
 }
