@@ -29,7 +29,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdlib.h>
+//#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "linked_list.h"
@@ -56,6 +56,11 @@
 #define ON  1
 #define OFF 0
 
+#define CAM_RES_W 320
+#define CAM_RES_H 240
+
+#define HW_CROP_H 128
+#define HW_CROP_V 128
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -74,22 +79,17 @@ uint8_t led_ready = 0;
 
 // timer (systick-based) related
 volatile uint32_t g_sysTicks;
-uint32_t cam_tick = 0;
+//uint32_t cam_tick = 0;
 
-// Camera frame buffer
-#ifdef USE_RGB565
-  __ALIGNED(32) uint8_t CameraBuf[320*240*2];  // *2 = RGB565
-#endif
-#ifdef USE_RGB888
-//  __ALIGNED(32) uint8_t CameraBuf[320U * 240U * 3U];  // *3 = RGB888
-  __ALIGNED(32) uint8_t CameraBuf[128*128*3];  // this matches to input tensor shape to the model deployed
-#endif
+// Camera frame buffer [*3 = RGB888]
+//__ALIGNED(32) uint8_t CameraBuf[CAM_RES_W * CAM_RES_H * 3];
+__ALIGNED(32) uint8_t CameraBuf[HW_CROP_H * HW_CROP_V * 3];  // this matches to input tensor shape to the model deployed
 
 // Display buffer for scaled frame (240x135 RGB565)
-__ALIGNED(32) uint16_t DisplayBuf[240*135];
+__ALIGNED(32) uint16_t DisplayBuf[ST7789_WIDTH * ST7789_HEIGHT];
 
 // Frame counter
-uint32_t frameNum = 0;
+//uint32_t frameNum = 0;
 
 // global var for model output result
 float inference_res = 0;
@@ -160,7 +160,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	uint32_t dcmi_dma_len = ((uint32_t)(128 * 128) * 3) / 4U;
+  uint32_t dcmi_dma_len = ((uint32_t)(HW_CROP_H * HW_CROP_V) * 3) / 4U;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -244,10 +244,10 @@ int main(void)
 	HAL_Delay(100);
 
 	// Enable DCMI crop
-	uint32_t X0 = (320 - 128) * 3 / 2;  // horizontal value is in pixel clocks count
-	uint32_t Y0 = (240 - 128) / 2;
-	uint32_t XSize = (128 * 3) - 1;     // horizontal value is in pixel clocks count [0 based]
-	uint32_t YSize = 128 - 1;           // 0 based
+	uint32_t X0 = (CAM_RES_W - HW_CROP_H) * 3 / 2;  // horizontal value is in pixel clocks count
+	uint32_t Y0 = (CAM_RES_H - HW_CROP_V) / 2;
+	uint32_t XSize = (HW_CROP_H * 3) - 1;           // horizontal value is in pixel clocks count [0 based]
+	uint32_t YSize = HW_CROP_V - 1;                 // 0 based
 	HAL_DCMI_ConfigCrop(&hdcmi, X0, Y0, XSize, YSize);
 	HAL_Delay(450);
 	HAL_DCMI_EnableCrop(&hdcmi);
@@ -284,11 +284,11 @@ int main(void)
 	// 2. Draw frame to display
 	  // Convert RGB888 (BGR) to RGB565 and scale 128x128 to 135x135 (maintaining square aspect ratio)
 	  // Display is 240x135, so we scale to 135x135 and center horizontally at x = (240-135)/2 = 52
-	  const uint16_t src_width = 128;
-	  const uint16_t src_height = 128;
+	  const uint16_t src_width = HW_CROP_H;
+	  const uint16_t src_height = HW_CROP_V;
 	  const uint16_t dst_width = 135;
 	  const uint16_t dst_height = 135;
-	  const uint16_t dst_x = (240 - dst_width) / 2;  // Center horizontally
+	  const uint16_t dst_x = (ST7789_WIDTH - dst_width) >> 1;  // Center horizontally
 	  const uint16_t dst_y = 0;  // Top aligned
 
 	  // Scale and convert pixel by pixel
@@ -325,21 +325,14 @@ int main(void)
 
 	// 3. Draw overlay
 	  char osd_buf[20] = {0};
-	  sprintf(osd_buf, "Person:%2u%%", (uint8_t)(inference_res*100.f));
-	  ST7789_WriteString((240 - (strlen(osd_buf)*11 + 4)), 115, osd_buf, Font_11x18, BLACK, YELLOW);
+	  sprintf(osd_buf, "%u%%", (uint8_t)(inference_res*100.f));
+	  ST7789_WriteString(((ST7789_WIDTH - 128) >> 1) - 1, ST7789_HEIGHT - 20, osd_buf, Font_11x18, BLACK, YELLOW);
 
     // 4. Restart camera if SNAPSHOT mode is in use
       is_frame_ready = 0;
       HAL_DCMI_Start_DMA(&hdcmi, CAMERA_MODE_SNAPSHOT, (uint32_t)CameraBuf, dcmi_dma_len);
     }
-//	else if (msec_since(cam_tick) > MSEC_BTWN_IMG_CAPTURES) {
-//	  // UNCOMMENT these two lines to debug camera FPS:
-////	  set_green_led_state(OFF);
-////	  set_red_led_state(OFF);
-//      BSP_CAMERA_Resume(0);
-//      cam_tick = get_ticks();
-////      set_green_led_state(ON);
-//    }
+
     /* USER CODE END WHILE */
 
 //  MX_X_CUBE_AI_Process();
@@ -632,17 +625,17 @@ void crop_center_128x128_rgb888(uint8_t *src_frame, uint16_t src_width, uint16_t
                                 uint8_t *dst_buffer)
 {
     // Copy cropped region pixel by pixel
-    for (uint16_t y = 0; y < 128; y++) {
+    for (uint16_t y = 0; y < HW_CROP_V; y++) {
         uint16_t src_y = y;
 
-        for (uint16_t x = 0; x < 128; x++) {
+        for (uint16_t x = 0; x < HW_CROP_H; x++) {
             uint16_t src_x = x;
 
             // Source pixel index (BGR888 format from DCMI)
             uint32_t src_idx = ((uint32_t)src_y * src_width + src_x) * 3;
 
             // Destination pixel index (RGB888 format for model)
-            uint32_t dst_idx = ((uint32_t)y * 128 + x) * 3;
+            uint32_t dst_idx = ((uint32_t)y * HW_CROP_H + x) * 3;
 
             // DCMI stores as BGR888, convert to RGB888 for TensorFlow model
             uint8_t b = src_frame[src_idx + 0];  // Blue from DCMI

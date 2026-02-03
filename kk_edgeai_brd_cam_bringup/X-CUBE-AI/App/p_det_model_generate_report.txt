@@ -1,6 +1,6 @@
 ST Edge AI Core v2.2.0-20266 2adc00962
-Created date          : 2026-01-27 17:41:04
-Parameters            : generate --target stm32u5 --name p_det_model -m C:/Users/kenneth.kong/STM32CubeIDE/workspace_2.0.0/stm32u5_custom_pcb_fw/kk_edgeai_brd_cam_bringup/mobilenet_v2_0.35_128_fft_int8_image_classification_person.tflite --compression none --verbosity 1 --workspace C:/Users/KENNET~1.KON/AppData/Local/Temp/mxAI_workspace15040404678090013449435188889534518 --output C:/Users/kenneth.kong/.stm32cubemx/p_det_model_output
+Created date          : 2026-02-02 15:06:39
+Parameters            : generate --target stm32u5 --name p_det_model -m C:/Users/kenneth.kong/STM32CubeIDE/workspace_2.0.0/stm32u5_custom_pcb_fw/kk_edgeai_brd_cam_bringup/mobilenet_v2_0.35_128_fft_int8_image_classification_person.tflite --compression none --verbosity 1 -O time --workspace C:/Users/KENNET~1.KON/AppData/Local/Temp/mxAI_workspace6595402588984003234104870801658934 --output C:/Users/kenneth.kong/.stm32cubemx/p_det_model_output
 
 Exec/report summary (generate)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -9,9 +9,9 @@ type               :   tflite
 c_name             :   p_det_model                                                                                                                                                            
 compression        :   none                                                                                                                                                                   
 options            :   allocate-inputs, allocate-outputs                                                                                                                                      
-optimization       :   balanced                                                                                                                                                               
+optimization       :   time                                                                                                                                                                   
 target/series      :   stm32u5                                                                                                                                                                
-workspace dir      :   C:\Users\KENNET~1.KON\AppData\Local\Temp\mxAI_workspace15040404678090013449435188889534518                                                                             
+workspace dir      :   C:\Users\KENNET~1.KON\AppData\Local\Temp\mxAI_workspace6595402588984003234104870801658934                                                                              
 output dir         :   C:\Users\kenneth.kong\.stm32cubemx\p_det_model_output                                                                                                                  
 model_fmt          :   sa/ua per tensor                                                                                                                                                       
 model_name         :   mobilenet_v2_0_35_128_fft_int8_image_classification_person                                                                                                             
@@ -22,8 +22,8 @@ input 1/1          :   'serving_default_input_10', uint8(1x128x128x3), 48.00 KBy
 output 1/1         :   'conversion_70', f32(1x1), 4 Bytes, activations                                                                                                                        
 macc               :   19,094,660                                                                                                                                                             
 weights (ro)       :   411,492 B (401.85 KiB) (1 segment) / -1,149,984(-73.6%) vs float model                                                                                                 
-activations (rw)   :   229,888 B (224.50 KiB) (1 segment) *                                                                                                                                   
-ram (total)        :   229,888 B (224.50 KiB) = 229,888 + 0 + 0                                                                                                                               
+activations (rw)   :   253,732 B (247.79 KiB) (1 segment) *                                                                                                                                   
+ram (total)        :   253,732 B (247.79 KiB) = 253,732 + 0 + 0                                                                                                                               
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 (*) 'input'/'output' buffers are allocated in the activations buffer
 
@@ -224,7 +224,7 @@ m_id   layer (type,original)                            oshape                  
 ------ ------------------------------------------------ ----------------------- ----------------- ----------- -------------------------------- --- ------------- ------------------- ---------------------- 
 70     conversion_70 (Conversion, DEQUANTIZE)           [b:1,c:1]                                           2                            nl_69   |                                   Conversion_[o][83]     
 ------ ------------------------------------------------ ----------------------- ----------------- ----------- -------------------------------- --- ------------- ------------------- ---------------------- 
-model/c-model: macc=19,951,245/19,094,660 -856,585(-4.3%) weights=411,492/411,492  activations=--/229,888 io=--/0
+model/c-model: macc=19,951,245/19,094,660 -856,585(-4.3%) weights=411,492/411,492  activations=--/253,732 io=--/0
 
 
 
@@ -234,7 +234,7 @@ model name            : mobilenet_v2_0_35_128_fft_int8_image_classification_pers
 c-name                : p_det_model
 c-node #              : 84
 c-array #             : 244
-activations size      : 229888 (1 segment)
+activations size      : 253732 (1 segment)
 weights size          : 411492 (1 segment)
 macc                  : 19094660
 inputs                : ['serving_default_input_10_output']
@@ -262,30 +262,30 @@ c_id   name (*_array)                    item/size       domain/mem-pool        
 15     conv2d_15_scratch0                352/352         activations/**default**   s8                    
 16     conv2d_15_weights                 768/768         weights/weights           const s8              
 17     conv2d_16_bias                    96/384          weights/weights           const s32             
-18     conv2d_16_output                  24576/24576     activations/**default**   s8                    
+18     conv2d_16_output                  24576/31104     activations/**default**   s8                    
 19     conv2d_16_scratch0                1024/1024       activations/**default**   s8                    
 20     conv2d_16_weights                 1536/1536       weights/weights           const s8              
 21     conv2d_17_bias                    96/384          weights/weights           const s32             
 22     conv2d_17_output                  24576/24576     activations/**default**   s8                    
 23     conv2d_17_pad_before_output       31104/31104     activations/**default**   s8                    
-24     conv2d_17_scratch0                3553/3553       activations/**default**   s8                    
+24     conv2d_17_scratch0                3264/3264       activations/**default**   s8                    
 25     conv2d_17_weights                 864/864         weights/weights           const s8              
 26     conv2d_18_bias                    16/64           weights/weights           const s32             
 27     conv2d_18_output                  4096/4096       activations/**default**   s8                    
 28     conv2d_18_scratch0                544/544         activations/**default**   s8                    
 29     conv2d_18_weights                 1536/1536       weights/weights           const s8              
 30     conv2d_1_bias                     16/64           weights/weights           const s32             
-31     conv2d_1_output                   65536/65536     activations/**default**   s8                    
+31     conv2d_1_output                   65536/69696     activations/**default**   s8                    
 32     conv2d_1_scratch0                 1196/1196       activations/**default**   s8                    
 33     conv2d_1_weights                  432/432         weights/weights           const s8              
 34     conv2d_20_bias                    96/384          weights/weights           const s32             
-35     conv2d_20_output                  24576/24576     activations/**default**   s8                    
+35     conv2d_20_output                  24576/31104     activations/**default**   s8                    
 36     conv2d_20_scratch0                1024/1024       activations/**default**   s8                    
 37     conv2d_20_weights                 1536/1536       weights/weights           const s8              
 38     conv2d_21_bias                    96/384          weights/weights           const s32             
 39     conv2d_21_output                  24576/24576     activations/**default**   s8                    
 40     conv2d_21_pad_before_output       31104/31104     activations/**default**   s8                    
-41     conv2d_21_scratch0                3553/3553       activations/**default**   s8                    
+41     conv2d_21_scratch0                3264/3264       activations/**default**   s8                    
 42     conv2d_21_weights                 864/864         weights/weights           const s8              
 43     conv2d_22_bias                    16/64           weights/weights           const s32             
 44     conv2d_22_output                  4096/4096       activations/**default**   s8                    
@@ -305,44 +305,44 @@ c_id   name (*_array)                    item/size       domain/mem-pool        
 58     conv2d_27_scratch0                624/624         activations/**default**   s8                    
 59     conv2d_27_weights                 2304/2304       weights/weights           const s8              
 60     conv2d_28_bias                    144/576         weights/weights           const s32             
-61     conv2d_28_output                  9216/9216       activations/**default**   s8                    
+61     conv2d_28_output                  9216/14400      activations/**default**   s8                    
 62     conv2d_28_scratch0                1536/1536       activations/**default**   s8                    
 63     conv2d_28_weights                 3456/3456       weights/weights           const s8              
 64     conv2d_29_bias                    144/576         weights/weights           const s32             
 65     conv2d_29_output                  9216/9216       activations/**default**   s8                    
 66     conv2d_29_pad_before_output       14400/14400     activations/**default**   s8                    
-67     conv2d_29_scratch0                5329/5329       activations/**default**   s8                    
+67     conv2d_29_scratch0                4896/4896       activations/**default**   s8                    
 68     conv2d_29_weights                 1296/1296       weights/weights           const s8              
 69     conv2d_2_bias                     16/64           weights/weights           const s32             
 70     conv2d_2_output                   65536/65536     activations/**default**   s8                    
 71     conv2d_2_pad_before_output        69696/69696     activations/**default**   s8                    
-72     conv2d_2_scratch0                 593/593         activations/**default**   s8                    
+72     conv2d_2_scratch0                 544/544         activations/**default**   s8                    
 73     conv2d_2_weights                  144/144         weights/weights           const s8              
 74     conv2d_30_bias                    24/96           weights/weights           const s32             
 75     conv2d_30_output                  1536/1536       activations/**default**   s8                    
 76     conv2d_30_scratch0                816/816         activations/**default**   s8                    
 77     conv2d_30_weights                 3456/3456       weights/weights           const s8              
 78     conv2d_32_bias                    144/576         weights/weights           const s32             
-79     conv2d_32_output                  9216/9216       activations/**default**   s8                    
+79     conv2d_32_output                  9216/14400      activations/**default**   s8                    
 80     conv2d_32_scratch0                1536/1536       activations/**default**   s8                    
 81     conv2d_32_weights                 3456/3456       weights/weights           const s8              
 82     conv2d_33_bias                    144/576         weights/weights           const s32             
 83     conv2d_33_output                  9216/9216       activations/**default**   s8                    
 84     conv2d_33_pad_before_output       14400/14400     activations/**default**   s8                    
-85     conv2d_33_scratch0                5329/5329       activations/**default**   s8                    
+85     conv2d_33_scratch0                4896/4896       activations/**default**   s8                    
 86     conv2d_33_weights                 1296/1296       weights/weights           const s8              
 87     conv2d_34_bias                    24/96           weights/weights           const s32             
 88     conv2d_34_output                  1536/1536       activations/**default**   s8                    
 89     conv2d_34_scratch0                816/816         activations/**default**   s8                    
 90     conv2d_34_weights                 3456/3456       weights/weights           const s8              
 91     conv2d_36_bias                    144/576         weights/weights           const s32             
-92     conv2d_36_output                  9216/9216       activations/**default**   s8                    
+92     conv2d_36_output                  9216/14400      activations/**default**   s8                    
 93     conv2d_36_scratch0                1536/1536       activations/**default**   s8                    
 94     conv2d_36_weights                 3456/3456       weights/weights           const s8              
 95     conv2d_37_bias                    144/576         weights/weights           const s32             
 96     conv2d_37_output                  9216/9216       activations/**default**   s8                    
 97     conv2d_37_pad_before_output       14400/14400     activations/**default**   s8                    
-98     conv2d_37_scratch0                5329/5329       activations/**default**   s8                    
+98     conv2d_37_scratch0                4896/4896       activations/**default**   s8                    
 99     conv2d_37_weights                 1296/1296       weights/weights           const s8              
 100    conv2d_38_bias                    24/96           weights/weights           const s32             
 101    conv2d_38_output                  1536/1536       activations/**default**   s8                    
@@ -353,39 +353,39 @@ c_id   name (*_array)                    item/size       domain/mem-pool        
 106    conv2d_3_scratch0                 144/144         activations/**default**   s8                    
 107    conv2d_3_weights                  128/128         weights/weights           const s8              
 108    conv2d_40_bias                    144/576         weights/weights           const s32             
-109    conv2d_40_output                  9216/9216       activations/**default**   s8                    
+109    conv2d_40_output                  9216/14400      activations/**default**   s8                    
 110    conv2d_40_scratch0                1536/1536       activations/**default**   s8                    
 111    conv2d_40_weights                 3456/3456       weights/weights           const s8              
 112    conv2d_41_bias                    144/576         weights/weights           const s32             
 113    conv2d_41_output                  9216/9216       activations/**default**   s8                    
 114    conv2d_41_pad_before_output       14400/14400     activations/**default**   s8                    
-115    conv2d_41_scratch0                5329/5329       activations/**default**   s8                    
+115    conv2d_41_scratch0                4896/4896       activations/**default**   s8                    
 116    conv2d_41_weights                 1296/1296       weights/weights           const s8              
 117    conv2d_42_bias                    32/128          weights/weights           const s32             
 118    conv2d_42_output                  2048/2048       activations/**default**   s8                    
 119    conv2d_42_scratch0                896/896         activations/**default**   s8                    
 120    conv2d_42_weights                 4608/4608       weights/weights           const s8              
 121    conv2d_43_bias                    192/768         weights/weights           const s32             
-122    conv2d_43_output                  12288/12288     activations/**default**   s8                    
+122    conv2d_43_output                  12288/19200     activations/**default**   s8                    
 123    conv2d_43_scratch0                2048/2048       activations/**default**   s8                    
 124    conv2d_43_weights                 6144/6144       weights/weights           const s8              
 125    conv2d_44_bias                    192/768         weights/weights           const s32             
 126    conv2d_44_output                  12288/12288     activations/**default**   s8                    
 127    conv2d_44_pad_before_output       19200/19200     activations/**default**   s8                    
-128    conv2d_44_scratch0                7105/7105       activations/**default**   s8                    
+128    conv2d_44_scratch0                6528/6528       activations/**default**   s8                    
 129    conv2d_44_weights                 1728/1728       weights/weights           const s8              
 130    conv2d_45_bias                    32/128          weights/weights           const s32             
 131    conv2d_45_output                  2048/2048       activations/**default**   s8                    
 132    conv2d_45_scratch0                1088/1088       activations/**default**   s8                    
 133    conv2d_45_weights                 6144/6144       weights/weights           const s8              
 134    conv2d_47_bias                    192/768         weights/weights           const s32             
-135    conv2d_47_output                  12288/12288     activations/**default**   s8                    
+135    conv2d_47_output                  12288/19200     activations/**default**   s8                    
 136    conv2d_47_scratch0                2048/2048       activations/**default**   s8                    
 137    conv2d_47_weights                 6144/6144       weights/weights           const s8              
 138    conv2d_48_bias                    192/768         weights/weights           const s32             
 139    conv2d_48_output                  12288/12288     activations/**default**   s8                    
 140    conv2d_48_pad_before_output       19200/19200     activations/**default**   s8                    
-141    conv2d_48_scratch0                7105/7105       activations/**default**   s8                    
+141    conv2d_48_scratch0                6528/6528       activations/**default**   s8                    
 142    conv2d_48_weights                 1728/1728       weights/weights           const s8              
 143    conv2d_49_bias                    32/128          weights/weights           const s32             
 144    conv2d_49_output                  2048/2048       activations/**default**   s8                    
@@ -409,39 +409,39 @@ c_id   name (*_array)                    item/size       domain/mem-pool        
 162    conv2d_54_scratch0                1328/1328       activations/**default**   s8                    
 163    conv2d_54_weights                 10752/10752     weights/weights           const s8              
 164    conv2d_55_bias                    336/1344        weights/weights           const s32             
-165    conv2d_55_output                  5376/5376       activations/**default**   s8                    
+165    conv2d_55_output                  5376/12096      activations/**default**   s8                    
 166    conv2d_55_scratch0                3584/3584       activations/**default**   s8                    
 167    conv2d_55_weights                 18816/18816     weights/weights           const s8              
 168    conv2d_56_bias                    336/1344        weights/weights           const s32             
 169    conv2d_56_output                  5376/5376       activations/**default**   s8                    
 170    conv2d_56_pad_before_output       12096/12096     activations/**default**   s8                    
-171    conv2d_56_scratch0                12433/12433     activations/**default**   s8                    
+171    conv2d_56_scratch0                11424/11424     activations/**default**   s8                    
 172    conv2d_56_weights                 3024/3024       weights/weights           const s8              
 173    conv2d_57_bias                    56/224          weights/weights           const s32             
 174    conv2d_57_output                  896/896         activations/**default**   s8                    
 175    conv2d_57_scratch0                1904/1904       activations/**default**   s8                    
 176    conv2d_57_weights                 18816/18816     weights/weights           const s8              
 177    conv2d_59_bias                    336/1344        weights/weights           const s32             
-178    conv2d_59_output                  5376/5376       activations/**default**   s8                    
+178    conv2d_59_output                  5376/12096      activations/**default**   s8                    
 179    conv2d_59_scratch0                3584/3584       activations/**default**   s8                    
 180    conv2d_59_weights                 18816/18816     weights/weights           const s8              
 181    conv2d_60_bias                    336/1344        weights/weights           const s32             
 182    conv2d_60_output                  5376/5376       activations/**default**   s8                    
 183    conv2d_60_pad_before_output       12096/12096     activations/**default**   s8                    
-184    conv2d_60_scratch0                12433/12433     activations/**default**   s8                    
+184    conv2d_60_scratch0                11424/11424     activations/**default**   s8                    
 185    conv2d_60_weights                 3024/3024       weights/weights           const s8              
 186    conv2d_61_bias                    56/224          weights/weights           const s32             
 187    conv2d_61_output                  896/896         activations/**default**   s8                    
 188    conv2d_61_scratch0                1904/1904       activations/**default**   s8                    
 189    conv2d_61_weights                 18816/18816     weights/weights           const s8              
 190    conv2d_63_bias                    336/1344        weights/weights           const s32             
-191    conv2d_63_output                  5376/5376       activations/**default**   s8                    
+191    conv2d_63_output                  5376/12096      activations/**default**   s8                    
 192    conv2d_63_scratch0                3584/3584       activations/**default**   s8                    
 193    conv2d_63_weights                 18816/18816     weights/weights           const s8              
 194    conv2d_64_bias                    336/1344        weights/weights           const s32             
 195    conv2d_64_output                  5376/5376       activations/**default**   s8                    
 196    conv2d_64_pad_before_output       12096/12096     activations/**default**   s8                    
-197    conv2d_64_scratch0                12433/12433     activations/**default**   s8                    
+197    conv2d_64_scratch0                11424/11424     activations/**default**   s8                    
 198    conv2d_64_weights                 3024/3024       weights/weights           const s8              
 199    conv2d_65_bias                    112/448         weights/weights           const s32             
 200    conv2d_65_output                  1792/1792       activations/**default**   s8                    
@@ -461,13 +461,13 @@ c_id   name (*_array)                    item/size       domain/mem-pool        
 214    conv2d_7_scratch0                 272/272         activations/**default**   s8                    
 215    conv2d_7_weights                  384/384         weights/weights           const s8              
 216    conv2d_8_bias                     48/192          weights/weights           const s32             
-217    conv2d_8_output                   49152/49152     activations/**default**   s8                    
+217    conv2d_8_output                   49152/55488     activations/**default**   s8                    
 218    conv2d_8_scratch0                 512/512         activations/**default**   s8                    
 219    conv2d_8_weights                  384/384         weights/weights           const s8              
 220    conv2d_9_bias                     48/192          weights/weights           const s32             
 221    conv2d_9_output                   49152/49152     activations/**default**   s8                    
 222    conv2d_9_pad_before_output        55488/55488     activations/**default**   s8                    
-223    conv2d_9_scratch0                 1777/1777       activations/**default**   s8                    
+223    conv2d_9_scratch0                 1632/1632       activations/**default**   s8                    
 224    conv2d_9_weights                  432/432         weights/weights           const s8              
 225    conversion_0_output               49152/49153     activations/**default**   s8                    
 226    conversion_70_output              1/4             activations/**default**   float       /output   
@@ -501,14 +501,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_1_scratch0                                            
                                                                       W: conv2d_1_weights                  int8(16x3x3x3) (33)        
                                                                       W: conv2d_1_bias                     int32(16) (30)             
-                                                                      O: conv2d_1_output                   int8(1x64x64x16) (31)      
+                                                                      O: conv2d_1_output                   int8(1x16x64x64) (31)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-2      conv2d_2_pad_before    2    Pad             0         0        I: conv2d_1_output                   int8(1x64x64x16) (31)      
-                                                                      O: conv2d_2_pad_before_output        int8(1x66x66x16) (71)      
+2      conv2d_2_pad_before    2    Pad             0         0        I: conv2d_1_output                   int8(1x16x64x64) (31)      
+                                                                      O: conv2d_2_pad_before_output        int8(1x16x66x66) (71)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-3      conv2d_2               2    Conv2D          589840    208      I: conv2d_2_pad_before_output        int8(1x66x66x16) (71)      
+3      conv2d_2               2    Conv2D          589840    208      I: conv2d_2_pad_before_output        int8(1x16x66x66) (71)      
                                                                       S: conv2d_2_scratch0                                            
-                                                                      W: conv2d_2_weights                  int8(1x3x3x16) (73)        
+                                                                      W: conv2d_2_weights                  int8(16x3x3x1) (73)        
                                                                       W: conv2d_2_bias                     int32(16) (69)             
                                                                       O: conv2d_2_output                   int8(1x64x64x16) (70)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -543,14 +543,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_8_scratch0                                            
                                                                       W: conv2d_8_weights                  int8(48x1x1x8) (219)       
                                                                       W: conv2d_8_bias                     int32(48) (216)            
-                                                                      O: conv2d_8_output                   int8(1x32x32x48) (217)     
+                                                                      O: conv2d_8_output                   int8(1x48x32x32) (217)     
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-10     conv2d_9_pad_before    9    Pad             0         0        I: conv2d_8_output                   int8(1x32x32x48) (217)     
-                                                                      O: conv2d_9_pad_before_output        int8(1x34x34x48) (222)     
+10     conv2d_9_pad_before    9    Pad             0         0        I: conv2d_8_output                   int8(1x48x32x32) (217)     
+                                                                      O: conv2d_9_pad_before_output        int8(1x48x34x34) (222)     
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-11     conv2d_9               9    Conv2D          442416    624      I: conv2d_9_pad_before_output        int8(1x34x34x48) (222)     
+11     conv2d_9               9    Conv2D          442416    624      I: conv2d_9_pad_before_output        int8(1x48x34x34) (222)     
                                                                       S: conv2d_9_scratch0                                            
-                                                                      W: conv2d_9_weights                  int8(1x3x3x48) (224)       
+                                                                      W: conv2d_9_weights                  int8(48x3x3x1) (224)       
                                                                       W: conv2d_9_bias                     int32(48) (220)            
                                                                       O: conv2d_9_output                   int8(1x32x32x48) (221)     
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -589,14 +589,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_16_scratch0                                           
                                                                       W: conv2d_16_weights                 int8(96x1x1x16) (20)       
                                                                       W: conv2d_16_bias                    int32(96) (17)             
-                                                                      O: conv2d_16_output                  int8(1x16x16x96) (18)      
+                                                                      O: conv2d_16_output                  int8(1x96x16x16) (18)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-19     conv2d_17_pad_before   17   Pad             0         0        I: conv2d_16_output                  int8(1x16x16x96) (18)      
-                                                                      O: conv2d_17_pad_before_output       int8(1x18x18x96) (23)      
+19     conv2d_17_pad_before   17   Pad             0         0        I: conv2d_16_output                  int8(1x96x16x16) (18)      
+                                                                      O: conv2d_17_pad_before_output       int8(1x96x18x18) (23)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-20     conv2d_17              17   Conv2D          221280    1248     I: conv2d_17_pad_before_output       int8(1x18x18x96) (23)      
+20     conv2d_17              17   Conv2D          221280    1248     I: conv2d_17_pad_before_output       int8(1x96x18x18) (23)      
                                                                       S: conv2d_17_scratch0                                           
-                                                                      W: conv2d_17_weights                 int8(1x3x3x96) (25)        
+                                                                      W: conv2d_17_weights                 int8(96x3x3x1) (25)        
                                                                       W: conv2d_17_bias                    int32(96) (21)             
                                                                       O: conv2d_17_output                  int8(1x16x16x96) (22)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -614,14 +614,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_20_scratch0                                           
                                                                       W: conv2d_20_weights                 int8(96x1x1x16) (37)       
                                                                       W: conv2d_20_bias                    int32(96) (34)             
-                                                                      O: conv2d_20_output                  int8(1x16x16x96) (35)      
+                                                                      O: conv2d_20_output                  int8(1x96x16x16) (35)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-24     conv2d_21_pad_before   21   Pad             0         0        I: conv2d_20_output                  int8(1x16x16x96) (35)      
-                                                                      O: conv2d_21_pad_before_output       int8(1x18x18x96) (40)      
+24     conv2d_21_pad_before   21   Pad             0         0        I: conv2d_20_output                  int8(1x96x16x16) (35)      
+                                                                      O: conv2d_21_pad_before_output       int8(1x96x18x18) (40)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-25     conv2d_21              21   Conv2D          221280    1248     I: conv2d_21_pad_before_output       int8(1x18x18x96) (40)      
+25     conv2d_21              21   Conv2D          221280    1248     I: conv2d_21_pad_before_output       int8(1x96x18x18) (40)      
                                                                       S: conv2d_21_scratch0                                           
-                                                                      W: conv2d_21_weights                 int8(1x3x3x96) (42)        
+                                                                      W: conv2d_21_weights                 int8(96x3x3x1) (42)        
                                                                       W: conv2d_21_bias                    int32(96) (38)             
                                                                       O: conv2d_21_output                  int8(1x16x16x96) (39)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -660,14 +660,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_28_scratch0                                           
                                                                       W: conv2d_28_weights                 int8(144x1x1x24) (63)      
                                                                       W: conv2d_28_bias                    int32(144) (60)            
-                                                                      O: conv2d_28_output                  int8(1x8x8x144) (61)       
+                                                                      O: conv2d_28_output                  int8(1x144x8x8) (61)       
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-33     conv2d_29_pad_before   29   Pad             0         0        I: conv2d_28_output                  int8(1x8x8x144) (61)       
-                                                                      O: conv2d_29_pad_before_output       int8(1x10x10x144) (66)     
+33     conv2d_29_pad_before   29   Pad             0         0        I: conv2d_28_output                  int8(1x144x8x8) (61)       
+                                                                      O: conv2d_29_pad_before_output       int8(1x144x10x10) (66)     
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-34     conv2d_29              29   Conv2D          83088     1872     I: conv2d_29_pad_before_output       int8(1x10x10x144) (66)     
+34     conv2d_29              29   Conv2D          83088     1872     I: conv2d_29_pad_before_output       int8(1x144x10x10) (66)     
                                                                       S: conv2d_29_scratch0                                           
-                                                                      W: conv2d_29_weights                 int8(1x3x3x144) (68)       
+                                                                      W: conv2d_29_weights                 int8(144x3x3x1) (68)       
                                                                       W: conv2d_29_bias                    int32(144) (64)            
                                                                       O: conv2d_29_output                  int8(1x8x8x144) (65)       
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -685,14 +685,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_32_scratch0                                           
                                                                       W: conv2d_32_weights                 int8(144x1x1x24) (81)      
                                                                       W: conv2d_32_bias                    int32(144) (78)            
-                                                                      O: conv2d_32_output                  int8(1x8x8x144) (79)       
+                                                                      O: conv2d_32_output                  int8(1x144x8x8) (79)       
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-38     conv2d_33_pad_before   33   Pad             0         0        I: conv2d_32_output                  int8(1x8x8x144) (79)       
-                                                                      O: conv2d_33_pad_before_output       int8(1x10x10x144) (84)     
+38     conv2d_33_pad_before   33   Pad             0         0        I: conv2d_32_output                  int8(1x144x8x8) (79)       
+                                                                      O: conv2d_33_pad_before_output       int8(1x144x10x10) (84)     
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-39     conv2d_33              33   Conv2D          83088     1872     I: conv2d_33_pad_before_output       int8(1x10x10x144) (84)     
+39     conv2d_33              33   Conv2D          83088     1872     I: conv2d_33_pad_before_output       int8(1x144x10x10) (84)     
                                                                       S: conv2d_33_scratch0                                           
-                                                                      W: conv2d_33_weights                 int8(1x3x3x144) (86)       
+                                                                      W: conv2d_33_weights                 int8(144x3x3x1) (86)       
                                                                       W: conv2d_33_bias                    int32(144) (82)            
                                                                       O: conv2d_33_output                  int8(1x8x8x144) (83)       
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -710,14 +710,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_36_scratch0                                           
                                                                       W: conv2d_36_weights                 int8(144x1x1x24) (94)      
                                                                       W: conv2d_36_bias                    int32(144) (91)            
-                                                                      O: conv2d_36_output                  int8(1x8x8x144) (92)       
+                                                                      O: conv2d_36_output                  int8(1x144x8x8) (92)       
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-43     conv2d_37_pad_before   37   Pad             0         0        I: conv2d_36_output                  int8(1x8x8x144) (92)       
-                                                                      O: conv2d_37_pad_before_output       int8(1x10x10x144) (97)     
+43     conv2d_37_pad_before   37   Pad             0         0        I: conv2d_36_output                  int8(1x144x8x8) (92)       
+                                                                      O: conv2d_37_pad_before_output       int8(1x144x10x10) (97)     
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-44     conv2d_37              37   Conv2D          83088     1872     I: conv2d_37_pad_before_output       int8(1x10x10x144) (97)     
+44     conv2d_37              37   Conv2D          83088     1872     I: conv2d_37_pad_before_output       int8(1x144x10x10) (97)     
                                                                       S: conv2d_37_scratch0                                           
-                                                                      W: conv2d_37_weights                 int8(1x3x3x144) (99)       
+                                                                      W: conv2d_37_weights                 int8(144x3x3x1) (99)       
                                                                       W: conv2d_37_bias                    int32(144) (95)            
                                                                       O: conv2d_37_output                  int8(1x8x8x144) (96)       
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -735,14 +735,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_40_scratch0                                           
                                                                       W: conv2d_40_weights                 int8(144x1x1x24) (111)     
                                                                       W: conv2d_40_bias                    int32(144) (108)           
-                                                                      O: conv2d_40_output                  int8(1x8x8x144) (109)      
+                                                                      O: conv2d_40_output                  int8(1x144x8x8) (109)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-48     conv2d_41_pad_before   41   Pad             0         0        I: conv2d_40_output                  int8(1x8x8x144) (109)      
-                                                                      O: conv2d_41_pad_before_output       int8(1x10x10x144) (114)    
+48     conv2d_41_pad_before   41   Pad             0         0        I: conv2d_40_output                  int8(1x144x8x8) (109)      
+                                                                      O: conv2d_41_pad_before_output       int8(1x144x10x10) (114)    
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-49     conv2d_41              41   Conv2D          83088     1872     I: conv2d_41_pad_before_output       int8(1x10x10x144) (114)    
+49     conv2d_41              41   Conv2D          83088     1872     I: conv2d_41_pad_before_output       int8(1x144x10x10) (114)    
                                                                       S: conv2d_41_scratch0                                           
-                                                                      W: conv2d_41_weights                 int8(1x3x3x144) (116)      
+                                                                      W: conv2d_41_weights                 int8(144x3x3x1) (116)      
                                                                       W: conv2d_41_bias                    int32(144) (112)           
                                                                       O: conv2d_41_output                  int8(1x8x8x144) (113)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -756,14 +756,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_43_scratch0                                           
                                                                       W: conv2d_43_weights                 int8(192x1x1x32) (124)     
                                                                       W: conv2d_43_bias                    int32(192) (121)           
-                                                                      O: conv2d_43_output                  int8(1x8x8x192) (122)      
+                                                                      O: conv2d_43_output                  int8(1x192x8x8) (122)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-52     conv2d_44_pad_before   44   Pad             0         0        I: conv2d_43_output                  int8(1x8x8x192) (122)      
-                                                                      O: conv2d_44_pad_before_output       int8(1x10x10x192) (127)    
+52     conv2d_44_pad_before   44   Pad             0         0        I: conv2d_43_output                  int8(1x192x8x8) (122)      
+                                                                      O: conv2d_44_pad_before_output       int8(1x192x10x10) (127)    
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-53     conv2d_44              44   Conv2D          110784    2496     I: conv2d_44_pad_before_output       int8(1x10x10x192) (127)    
+53     conv2d_44              44   Conv2D          110784    2496     I: conv2d_44_pad_before_output       int8(1x192x10x10) (127)    
                                                                       S: conv2d_44_scratch0                                           
-                                                                      W: conv2d_44_weights                 int8(1x3x3x192) (129)      
+                                                                      W: conv2d_44_weights                 int8(192x3x3x1) (129)      
                                                                       W: conv2d_44_bias                    int32(192) (125)           
                                                                       O: conv2d_44_output                  int8(1x8x8x192) (126)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -781,14 +781,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_47_scratch0                                           
                                                                       W: conv2d_47_weights                 int8(192x1x1x32) (137)     
                                                                       W: conv2d_47_bias                    int32(192) (134)           
-                                                                      O: conv2d_47_output                  int8(1x8x8x192) (135)      
+                                                                      O: conv2d_47_output                  int8(1x192x8x8) (135)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-57     conv2d_48_pad_before   48   Pad             0         0        I: conv2d_47_output                  int8(1x8x8x192) (135)      
-                                                                      O: conv2d_48_pad_before_output       int8(1x10x10x192) (140)    
+57     conv2d_48_pad_before   48   Pad             0         0        I: conv2d_47_output                  int8(1x192x8x8) (135)      
+                                                                      O: conv2d_48_pad_before_output       int8(1x192x10x10) (140)    
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-58     conv2d_48              48   Conv2D          110784    2496     I: conv2d_48_pad_before_output       int8(1x10x10x192) (140)    
+58     conv2d_48              48   Conv2D          110784    2496     I: conv2d_48_pad_before_output       int8(1x192x10x10) (140)    
                                                                       S: conv2d_48_scratch0                                           
-                                                                      W: conv2d_48_weights                 int8(1x3x3x192) (142)      
+                                                                      W: conv2d_48_weights                 int8(192x3x3x1) (142)      
                                                                       W: conv2d_48_bias                    int32(192) (138)           
                                                                       O: conv2d_48_output                  int8(1x8x8x192) (139)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -827,14 +827,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_55_scratch0                                           
                                                                       W: conv2d_55_weights                 int8(336x1x1x56) (167)     
                                                                       W: conv2d_55_bias                    int32(336) (164)           
-                                                                      O: conv2d_55_output                  int8(1x4x4x336) (165)      
+                                                                      O: conv2d_55_output                  int8(1x336x4x4) (165)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-66     conv2d_56_pad_before   56   Pad             0         0        I: conv2d_55_output                  int8(1x4x4x336) (165)      
-                                                                      O: conv2d_56_pad_before_output       int8(1x6x6x336) (170)      
+66     conv2d_56_pad_before   56   Pad             0         0        I: conv2d_55_output                  int8(1x336x4x4) (165)      
+                                                                      O: conv2d_56_pad_before_output       int8(1x336x6x6) (170)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-67     conv2d_56              56   Conv2D          48720     4368     I: conv2d_56_pad_before_output       int8(1x6x6x336) (170)      
+67     conv2d_56              56   Conv2D          48720     4368     I: conv2d_56_pad_before_output       int8(1x336x6x6) (170)      
                                                                       S: conv2d_56_scratch0                                           
-                                                                      W: conv2d_56_weights                 int8(1x3x3x336) (172)      
+                                                                      W: conv2d_56_weights                 int8(336x3x3x1) (172)      
                                                                       W: conv2d_56_bias                    int32(336) (168)           
                                                                       O: conv2d_56_output                  int8(1x4x4x336) (169)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -852,14 +852,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_59_scratch0                                           
                                                                       W: conv2d_59_weights                 int8(336x1x1x56) (180)     
                                                                       W: conv2d_59_bias                    int32(336) (177)           
-                                                                      O: conv2d_59_output                  int8(1x4x4x336) (178)      
+                                                                      O: conv2d_59_output                  int8(1x336x4x4) (178)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-71     conv2d_60_pad_before   60   Pad             0         0        I: conv2d_59_output                  int8(1x4x4x336) (178)      
-                                                                      O: conv2d_60_pad_before_output       int8(1x6x6x336) (183)      
+71     conv2d_60_pad_before   60   Pad             0         0        I: conv2d_59_output                  int8(1x336x4x4) (178)      
+                                                                      O: conv2d_60_pad_before_output       int8(1x336x6x6) (183)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-72     conv2d_60              60   Conv2D          48720     4368     I: conv2d_60_pad_before_output       int8(1x6x6x336) (183)      
+72     conv2d_60              60   Conv2D          48720     4368     I: conv2d_60_pad_before_output       int8(1x336x6x6) (183)      
                                                                       S: conv2d_60_scratch0                                           
-                                                                      W: conv2d_60_weights                 int8(1x3x3x336) (185)      
+                                                                      W: conv2d_60_weights                 int8(336x3x3x1) (185)      
                                                                       W: conv2d_60_bias                    int32(336) (181)           
                                                                       O: conv2d_60_output                  int8(1x4x4x336) (182)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -877,14 +877,14 @@ c_id   name (*_layer)         id   layer_type      macc      rom      tensors   
                                                                       S: conv2d_63_scratch0                                           
                                                                       W: conv2d_63_weights                 int8(336x1x1x56) (193)     
                                                                       W: conv2d_63_bias                    int32(336) (190)           
-                                                                      O: conv2d_63_output                  int8(1x4x4x336) (191)      
+                                                                      O: conv2d_63_output                  int8(1x336x4x4) (191)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-76     conv2d_64_pad_before   64   Pad             0         0        I: conv2d_63_output                  int8(1x4x4x336) (191)      
-                                                                      O: conv2d_64_pad_before_output       int8(1x6x6x336) (196)      
+76     conv2d_64_pad_before   64   Pad             0         0        I: conv2d_63_output                  int8(1x336x4x4) (191)      
+                                                                      O: conv2d_64_pad_before_output       int8(1x336x6x6) (196)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
-77     conv2d_64              64   Conv2D          48720     4368     I: conv2d_64_pad_before_output       int8(1x6x6x336) (196)      
+77     conv2d_64              64   Conv2D          48720     4368     I: conv2d_64_pad_before_output       int8(1x336x6x6) (196)      
                                                                       S: conv2d_64_scratch0                                           
-                                                                      W: conv2d_64_weights                 int8(1x3x3x336) (198)      
+                                                                      W: conv2d_64_weights                 int8(336x3x3x1) (198)      
                                                                       W: conv2d_64_bias                    int32(336) (194)           
                                                                       O: conv2d_64_output                  int8(1x4x4x336) (195)      
 ------ ---------------------- ---- --------------- --------- -------- ------------------------------------ -------------------------- 
@@ -1094,24 +1094,24 @@ m_id   name                                   c_macc                    c_rom   
 69     nl_69                                  |                  0.0%   |                  0.0%   [82]       
 70     conversion_70                          |                  0.0%   |                  0.0%   [83]       
 ------ -------------------------------------- ------------------------- ------------------------- ---------- 
-macc=19,094,660 weights=411,492 act=229,888 ram_io=0
+macc=19,094,660 weights=411,492 act=253,732 ram_io=0
  
  Requested memory size by section - "stm32u5" target
  ------------------------------- -------- --------- -------- --------- 
  module                              text    rodata     data       bss 
  ------------------------------- -------- --------- -------- --------- 
- p_det_model.o                      4,680    39,050   29,464     1,192 
- NetworkRuntime1020_CM33_GCC.a     28,932         0        0         0 
+ p_det_model.o                      4,648    39,050   29,464     1,192 
+ NetworkRuntime1020_CM33_GCC.a     31,196         0        0         0 
  p_det_model_data.o                    48        16       88         0 
  lib (toolchain)*                   4,044        24        0         0 
  ------------------------------- -------- --------- -------- --------- 
- RT total**                        37,704    39,090   29,552     1,192 
+ RT total**                        39,936    39,090   29,552     1,192 
  ------------------------------- -------- --------- -------- --------- 
  weights                                0   411,496        0         0 
- activations                            0         0        0   229,888 
+ activations                            0         0        0   253,732 
  io                                     0         0        0         0 
  ------------------------------- -------- --------- -------- --------- 
- TOTAL                             37,704   450,586   29,552   231,080 
+ TOTAL                             39,936   450,586   29,552   254,924 
  ------------------------------- -------- --------- -------- --------- 
  *  toolchain objects (libm/libgcc*)
  ** RT AI runtime objects (kernels+infrastructure)
@@ -1120,9 +1120,9 @@ macc=19,094,660 weights=411,492 act=229,888 ram_io=0
   ---------------------------------------------------
                FLASH (ro)      %*   RAM (rw)       % 
   ---------------------------------------------------
-  RT total        106,346   20.5%     30,744   11.8% 
+  RT total        108,578   20.9%     30,744   10.8% 
   ---------------------------------------------------
-  TOTAL           517,842            260,632         
+  TOTAL           520,074            284,476         
   ---------------------------------------------------
   *  rt/total
 

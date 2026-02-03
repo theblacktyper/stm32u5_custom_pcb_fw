@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    p_det_model.h
   * @author  AST Embedded Analytics Research Platform
-  * @date    2026-01-27T17:41:03-0800
+  * @date    2026-02-02T15:06:37-0800
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * @attention

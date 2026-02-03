@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    p_det_model_data.c
   * @author  AST Embedded Analytics Research Platform
-  * @date    2026-01-27T17:41:03-0800
+  * @date    2026-02-02T15:06:37-0800
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * @attention
@@ -21,8 +21,8 @@
 AI_API_DECLARE_BEGIN
 ai_buffer g_p_det_model_data_map_activations[AI_P_DET_MODEL_DATA_ACTIVATIONS_COUNT] = {
   AI_BUFFER_INIT(AI_FLAG_NONE,  AI_BUFFER_FORMAT_U8,
-    AI_BUFFER_SHAPE_INIT(AI_SHAPE_BCWH, 4, 1, 229888, 1, 1),
-    229888, NULL, NULL),    /* heap_overlay_pool */
+    AI_BUFFER_SHAPE_INIT(AI_SHAPE_BCWH, 4, 1, 253732, 1, 1),
+    253732, NULL, NULL),    /* heap_overlay_pool */
   };
 ai_buffer g_p_det_model_data_map_weights[AI_P_DET_MODEL_DATA_WEIGHTS_COUNT] = {
   AI_BUFFER_INIT(AI_FLAG_NONE,  AI_BUFFER_FORMAT_U8,

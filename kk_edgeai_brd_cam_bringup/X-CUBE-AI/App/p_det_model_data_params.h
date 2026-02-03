@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    p_det_model_data_params.h
   * @author  AST Embedded Analytics Research Platform
-  * @date    2026-01-27T17:41:03-0800
+  * @date    2026-02-02T15:06:37-0800
   * @brief   AI Tool Automatic Code Generator for Embedded NN computing
   ******************************************************************************
   * Copyright (c) 2026 STMicroelectronics.
@@ -28,10 +28,10 @@
 
 
 #define AI_P_DET_MODEL_DATA_ACTIVATIONS_SIZES \
-  { 229888, }
-#define AI_P_DET_MODEL_DATA_ACTIVATIONS_SIZE     (229888)
+  { 253732, }
+#define AI_P_DET_MODEL_DATA_ACTIVATIONS_SIZE     (253732)
 #define AI_P_DET_MODEL_DATA_ACTIVATIONS_COUNT    (1)
-#define AI_P_DET_MODEL_DATA_ACTIVATION_1_SIZE    (229888)
+#define AI_P_DET_MODEL_DATA_ACTIVATION_1_SIZE    (253732)
 
 
 
